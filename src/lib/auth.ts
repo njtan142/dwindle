@@ -58,11 +58,12 @@ export const authOptions: NextAuthOptions = {
             })
           }
 
+          // Fix the return type to match NextAuth User type
           return {
             id: user.id,
             email: user.email,
             name: user.name,
-            avatar: user.avatar,
+            avatar: user.avatar || undefined, // Convert null to undefined
           }
         } catch (error) {
           console.error('Auth error:', error)

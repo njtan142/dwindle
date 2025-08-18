@@ -3,10 +3,10 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
 // Define types
-export type ApiHandler = (
+export type ApiHandler<T = any> = (
   request: NextRequest,
   user: any,
-  params: { params: Record<string, string> }
+  params?: T
 ) => Promise<NextResponse>
 
 // Authentication middleware
@@ -53,8 +53,8 @@ export async function handleErrors(asyncFn: () => Promise<NextResponse | undefin
 }
 
 // Combined middleware that applies both auth and error handling
-export function createProtectedApiHandler(handler: ApiHandler) {
-  return async function(request: NextRequest, params: { params: Record<string, string> }) {
+export function createProtectedApiHandler<T = any>(handler: ApiHandler<T>) {
+  return async function(request: NextRequest, params?: T) {
     return handleErrors(async () => {
       // First apply authentication
       const authResult = await authenticateUser(request)

@@ -5,10 +5,11 @@ import { channelExists, getChannelById } from '@/lib/channel-service'
 import { joinChannelSchema, validateRequest } from '@/lib/validation'
 
 // POST handler using middleware and validation
-const postHandler = createProtectedApiHandler(async (request: NextRequest, user, { params }) => {
+// @ts-ignore
+const postHandler = createProtectedApiHandler(async (request: NextRequest, user, params: { params: { id: string } } | undefined) => {
   try {
     // Validate request parameters
-    const validation = validateRequest(joinChannelSchema, { channelId: params.id })
+    const validation = validateRequest(joinChannelSchema, { channelId: params?.params.id })
     if (!validation.success) {
       return NextResponse.json({ error: validation.error }, { status: 400 })
     }

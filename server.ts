@@ -59,8 +59,8 @@ async function createCustomServer() {
 }
 
 // Handle hot reloading in development
-if (dev && module.hot) {
-  module.hot.accept('./src/lib/socket', () => {
+if (dev && (module as any).hot) {
+  (module as any).hot.accept('./src/lib/socket', () => {
     console.log('Socket handler updated, reinitializing Socket.IO');
     if (io) {
       // Clean up existing connections
@@ -70,7 +70,7 @@ if (dev && module.hot) {
     }
   });
 
-  module.hot.dispose(() => {
+  (module as any).hot.dispose(() => {
     if (server) {
       server.close();
     }
