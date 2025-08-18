@@ -1,5 +1,6 @@
 // server.ts - Next.js Standalone + Socket.IO
 import { setupSocket } from '@/lib/socket';
+import { ensureGeneralChannel } from '@/lib/channel-service';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import next from 'next';
@@ -45,6 +46,11 @@ async function createCustomServer() {
     });
 
     setupSocket(io);
+
+    // Ensure general channel exists
+    ensureGeneralChannel()
+      .then(() => console.log('General channel ensured'))
+      .catch(error => console.error('Failed to ensure general channel:', error));
 
     // Start the server
     server.listen(currentPort, hostname, () => {

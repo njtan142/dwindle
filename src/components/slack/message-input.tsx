@@ -5,20 +5,21 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 interface MessageInputProps {
-  onSendMessage: (message: string) => void
-  onTyping: (isTyping: boolean) => void
+  onSendMessage: (message: string, channelId?: string) => void
+  onTyping: (isTyping: boolean, channelId?: string) => void
   placeholder?: string
+  channelId?: string
 }
 
-export function MessageInput({ onSendMessage, onTyping, placeholder }: MessageInputProps) {
+export function MessageInput({ onSendMessage, onTyping, placeholder, channelId }: MessageInputProps) {
   const [message, setMessage] = useState('')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (message.trim()) {
-      onSendMessage(message.trim())
+      onSendMessage(message.trim(), channelId)
       setMessage('')
-      onTyping(false)
+      onTyping(false, channelId)
     }
   }
 
@@ -35,9 +36,9 @@ export function MessageInput({ onSendMessage, onTyping, placeholder }: MessageIn
     
     // Emit typing event
     if (value.length > 0) {
-      onTyping(true)
+      onTyping(true, channelId)
     } else {
-      onTyping(false)
+      onTyping(false, channelId)
     }
   }
 

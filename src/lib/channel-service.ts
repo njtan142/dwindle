@@ -8,6 +8,11 @@ import { db } from '@/lib/db'
  */
 export async function validateChannelAccess(userId: string, channelId: string): Promise<boolean> {
   try {
+    // Special case for general channel - all users have access
+    if (channelId === 'general') {
+      return true
+    }
+
     // First, get the channel to check if it exists and if it's private
     const channel = await db.channel.findUnique({
       where: { id: channelId },
@@ -61,6 +66,22 @@ export async function channelExists(channelId: string): Promise<boolean> {
 }
 
 /**
+ * Gets a channel by name
+ * @param name - The name of the channel
+ * @returns The channel object or null if not found
+ */
+export async function getChannelByName(name: string) {
+  try {
+    return await db.channel.findUnique({
+      where: { name: name }
+    })
+  } catch (error) {
+    console.error('Error getting channel by name:', error)
+    return null
+  }
+}
+
+/**
  * Gets a channel by ID
  * @param channelId - The ID of the channel
  * @returns The channel object or null if not found
@@ -73,5 +94,36 @@ export async function getChannelById(channelId: string) {
   } catch (error) {
     console.error('Error getting channel by ID:', error)
     return null
+  }
+}
+
+/**
+ * Ensures that a "general" channel exists as a PUBLIC channel
+ * @returns The general channel object
+ */
+export async function ensureGeneralChannel() {
+  try {
+    // Check if a channel named "general" already exists
+    let generalChannel = await getChannelByName("general");
+    
+    // If not, create it as a PUBLIC channel
+    if (!generalChannel) {
+      generalChannel = await db.channel.create({
+        data: {
+          name: "general",
+          description: "General discussion channel",
+          type: "PUBLIC",
+          isPrivate: false
+        }
+      });
+      console.log('Created general channel');
+    } else {
+      console.log('General channel already exists');
+    }
+    
+    return generalChannel;
+  } catch (error) {
+    console.error('Error ensuring general channel exists:', error);
+    throw error;
   }
 }

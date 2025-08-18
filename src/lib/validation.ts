@@ -15,7 +15,7 @@ export const joinChannelSchema = z.object({
 // Message validation schemas
 export const createMessageSchema = z.object({
   content: z.string().min(1, 'Message content is required').max(100, 'Message content must be less than 1000 characters'),
-  channelId: z.string().min(1, 'Channel ID is required')
+  channelId: z.string().min(1, 'Channel ID is required').optional()
 })
 
 // User validation schemas
