@@ -1,4 +1,4 @@
-# System Architecture v0.2.5
+# System Architecture v0.6.0
 
 This document provides a high-level overview of the Dwindle application's architecture, including design patterns, frameworks, and key architectural decisions.
 
@@ -79,7 +79,10 @@ Dwindle is a real-time chat application built with a modern web technology stack
 - **NextAuth.js**: Authentication with custom credentials provider and Prisma adapter
 
 ### Middleware
-- **Custom Middleware**: Authentication and error handling middleware in `src/lib/middleware.ts`
+- **Custom Middleware**: Authentication, rate limiting, CSRF protection, and error handling middleware in `src/lib/api-middleware.ts`
+
+### Service Layer
+- **Centralized Services**: Business logic organized into service layers in `src/services/` for better separation of concerns
 
 ## Database
 
@@ -91,6 +94,9 @@ Dwindle is a real-time chat application built with a modern web technology stack
 
 ### Schema
 - **Prisma Schema**: Defined in `prisma/schema.prisma` with models for User, Channel, Message, Membership, and Reaction
+
+### Service Layer
+- **Database Services**: Centralized database operations organized by entity in `src/services/database/`
 
 ## Key Architectural Decisions
 
@@ -112,12 +118,18 @@ Zod is used for request validation in API routes, ensuring that incoming data me
 ### Component-based UI
 The UI is built with reusable components following the shadcn/ui pattern, promoting consistency and maintainability.
 
+### Centralized Service Layer
+A centralized service layer (`src/services/`) has been introduced to separate business logic from API routes and UI components, improving maintainability and testability.
+
+### Error Handling
+Comprehensive error handling with custom error classes and standardized API responses has been implemented.
+
 ## Data Flow
 
 1. **User Interaction**: User interacts with React components in the browser
 2. **API Requests**: For data operations, the frontend makes HTTP requests to Next.js API routes
 3. **Authentication**: Requests are authenticated using NextAuth.js middleware
-4. **Business Logic**: API routes process requests using business logic services
-5. **Data Access**: Prisma ORM is used to interact with the SQLite database
+4. **Business Logic**: API routes process requests using business logic services in the service layer
+5. **Data Access**: Database services use Prisma ORM to interact with the SQLite database
 6. **Real-time Updates**: For immediate updates, Socket.IO is used to broadcast changes to connected clients
 7. **UI Updates**: Components update based on API responses or real-time events

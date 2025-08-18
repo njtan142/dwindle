@@ -1,4 +1,4 @@
-# UI Components v0.2.5
+# UI Components v0.6.0
 
 This document details the major user interface components in the Dwindle application.
 
@@ -16,6 +16,22 @@ Component that provides functionality for creating new channels.
 ### Logic Classes Interaction
 - Triggers dialog for channel creation
 - Calls API to create new channels
+
+## ChannelMembersDialog
+
+### Description
+Dialog component that allows users to view and manage channel members.
+
+### Location
+`src/components/slack/channel-members-dialog.tsx`
+
+### Data Managed
+- List of channel members
+- Loading and error states
+
+### Logic Classes Interaction
+- Fetches channel members via `/api/channels/[id]/members` endpoint
+- Calls API to add/remove members from channels
 
 ## ChannelsPanel
 

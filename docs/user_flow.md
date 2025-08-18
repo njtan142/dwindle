@@ -1,4 +1,4 @@
-# User Flow v0.2.5
+# User Flow v0.6.0
 
 This document describes the primary user journey in the Dwindle application, from initial access to sending messages in channels.
 
@@ -36,8 +36,8 @@ This document describes the primary user journey in the Dwindle application, fro
   - `GET /api/users` (fetches list of users)
   - `GET /api/channels` (fetches list of channels)
 - **Logic Classes**:
-  - `createProtectedApiHandler` (from `src/lib/middleware.ts`)
-  - `authenticateUser` (from `src/lib/middleware.ts`)
+  - `createProtectedApiHandler` (from `src/lib/api-middleware.ts`)
+  - `authenticateUser` (from `src/lib/api-middleware.ts`)
 
 ### 4. Channel Selection
 - **User Action**: User selects a channel from the channels panel
@@ -49,16 +49,16 @@ This document describes the primary user journey in the Dwindle application, fro
 - **API Endpoints**:
   - `GET /api/messages?channelId={id}` (fetches messages for channel)
 - **Logic Classes**:
-  - `validateChannelAccess` (from `src/lib/channel-service.ts`)
+  - `validateChannelAccess` (from `src/services/database/channel-service.ts`)
 
 ### 5. Real-time Connection Establishment
 - **User Action**: User enters a channel
 - **System Response**: Application establishes WebSocket connection for real-time updates
 - **Components Involved**:
   - `src/hooks/use-socket.ts` (Socket.IO client hook)
-  - `src/lib/socket.ts` (Socket.IO server logic)
+  - `src/services/socket/socket-events.ts` (Socket.IO server logic)
 - **Logic Classes**:
-  - `setupSocket` (from `src/lib/socket.ts`)
+  - `setupSocketEvents` (from `src/services/socket/socket-events.ts`)
 
 ### 6. Message Sending
 - **User Action**: User types and sends a message in the message input
@@ -70,7 +70,7 @@ This document describes the primary user journey in the Dwindle application, fro
   - `POST /api/messages` (creates new message in database)
 - **Logic Classes**:
   - `createMessageSchema` (from `src/lib/validation.ts`)
-  - `validateRequest` (from `src/lib/validation.ts`)
+  - `validateRequest` (from `src/lib/api-validation.ts`)
 - **Socket Events**:
   - `sendMessage` (client sends message)
   - `newMessage` (server broadcasts message to channel)
@@ -97,7 +97,7 @@ This document describes the primary user journey in the Dwindle application, fro
   - `POST /api/channels` (creates new channel)
 - **Logic Classes**:
   - `createChannelSchema` (from `src/lib/validation.ts`)
-  - `validateRequest` (from `src/lib/validation.ts`)
+  - `validateRequest` (from `src/lib/api-validation.ts`)
 
 ### 9. Direct Messaging
 - **User Action**: User initiates a direct message with another user
@@ -134,3 +134,15 @@ This document describes the primary user journey in the Dwindle application, fro
 - **Socket Events**:
   - `typing` (client sends typing status)
   - `userTyping` (server broadcasts typing status)
+
+### Channel Member Management
+- **User Action**: User adds or removes members from a private channel
+- **System Response**: Channel membership is updated and reflected for all members
+- **Components Involved**:
+  - `src/components/slack/channel-members-dialog.tsx` (manages channel members)
+- **API Endpoints**:
+  - `POST /api/channels/[id]/members` (adds member to channel)
+  - `DELETE /api/channels/[id]/members/[userId]` (removes member from channel)
+- **Logic Classes**:
+  - `addChannelMember` (from `src/services/database/membership-service.ts`)
+  - `removeChannelMember` (from `src/services/database/membership-service.ts`)

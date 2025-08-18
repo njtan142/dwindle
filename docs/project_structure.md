@@ -1,4 +1,4 @@
-# Project Structure v0.2.5
+# Project Structure v0.6.0
 
 This document provides a comprehensive overview of the file and folder structure of the Dwindle project, a Slack-like real-time chat application built with Next.js 15, TypeScript, Tailwind CSS, and Socket.IO.
 
@@ -23,10 +23,16 @@ This document provides a comprehensive overview of the file and folder structure
 ├── .gemini/                        - Gemini-related files and configurations
 ├── .kilocode/                      - Kilocode-related files and configurations
 ├── docs/                           - Project documentation
+│   ├── api-refactor.md             - API refactoring documentation
 │   ├── architecture.md             - System architecture overview
+│   ├── authentication-refactor.md  - Authentication refactoring documentation
+│   ├── database-refactor.md        - Database refactoring documentation
 │   ├── features.md                 - List of implemented features
+│   ├── hooks-refactor.md           - Hooks refactoring documentation
 │   ├── logic_classes.md            - Core business logic documentation
 │   ├── project_structure.md        - Project structure documentation (this file)
+│   ├── refactoring_analysis.md     - Refactoring analysis documentation
+│   ├── ui-component-refactor.md    - UI component refactoring documentation
 │   ├── ui_classes.md               - UI components documentation
 │   └── user_flow.md                - User journey documentation
 ├── prisma/                         - Prisma ORM configuration and database files
@@ -38,6 +44,8 @@ This document provides a comprehensive overview of the file and folder structure
     │   ├── api/                    - API routes
     │   │   ├── auth/               - Authentication API routes
     │   │   ├── channels/           - Channel management API routes
+    │   │   │   └── [id]/           - Channel-specific API routes
+    │   │   │       └── members/    - Channel member management API routes
     │   │   ├── health/             - Health check API routes
     │   │   ├── messages/           - Message management API routes
     │   │   └── users/              - User management API routes
@@ -48,7 +56,9 @@ This document provides a comprehensive overview of the file and folder structure
     │   └── page.tsx                - Main application page
     ├── components/                 - Reusable UI components
     │   ├── slack/                  - Slack-specific UI components
+    │   │   ├── common/             - Common UI components
     │   │   ├── channel-creator.tsx - Component for creating new channels
+    │   │   ├── channel-members-dialog.tsx - Dialog for managing channel members
     │   │   ├── channels-panel.tsx  - Panel displaying available channels
     │   │   ├── chat-container.tsx  - Main chat container component
     │   │   ├── chat-header.tsx     - Header for the chat area
@@ -66,13 +76,39 @@ This document provides a comprehensive overview of the file and folder structure
     │   ├── use-socket.ts           - Socket.IO integration hook
     │   └── use-toast.ts            - Toast notification hook
     ├── lib/                        - Utility libraries and services
+    │   ├── api-middleware.ts       - API middleware functions
+    │   ├── api-utils.ts            - API utility functions
+    │   ├── api-validation.ts       - API validation schemas and helpers
+    │   ├── auth-errors.ts          - Authentication error classes
     │   ├── auth.ts                 - Authentication configuration
     │   ├── channel-service.ts      - Channel-related business logic
     │   ├── db.ts                   - Database client setup
-    │   ├── middleware.ts           - API middleware functions
-    │   ├── socket.ts               - Socket.IO server setup
+    │   ├── middleware.ts           - General middleware functions
+    │   ├── socket-server.ts        - Socket.IO server setup
+    │   ├── socket.ts               - Socket.IO client setup
     │   ├── utils.ts                - Utility functions
     │   └── validation.ts           - Request validation schemas and helpers
+    ├── services/                   - Centralized service layer
+    │   ├── database/               - Database service layer
+    │   │   ├── channel-service.ts  - Channel database operations
+    │   │   ├── client.ts           - Database client setup
+    │   │   ├── error-handler.ts    - Database error handling
+    │   │   ├── index.ts            - Database service exports
+    │   │   ├── membership-service.ts - Membership database operations
+    │   │   ├── message-service.ts  - Message database operations
+    │   │   ├── query-builder.ts    - Database query builder
+    │   │   ├── transaction.ts      - Database transaction management
+    │   │   └── user-service.ts     - User database operations
+    │   └── socket/                 - Socket service layer
+    │       ├── index.ts            - Socket service exports
+    │       ├── socket-events.ts    - Socket event handlers
+    │       ├── socket-service.ts   - Socket client service
+    │       └── socket-types.ts     - Socket type definitions
     └── types/                      - TypeScript type definitions
-        └── index.ts                - Centralized type definitions
+        ├── api.ts                  - API-related type definitions
+        ├── auth.ts                 - Authentication-related type definitions
+        ├── components.ts           - Component-related type definitions
+        ├── database.ts             - Database-related type definitions
+        ├── hooks.ts                - Hook-related type definitions
+        └── index.ts                - Centralized type exports
 ```
