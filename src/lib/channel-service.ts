@@ -8,11 +8,6 @@ import { db } from '@/lib/db'
  */
 export async function validateChannelAccess(userId: string, channelId: string): Promise<boolean> {
   try {
-    // Special case for general channel - all users have access
-    if (channelId === 'general') {
-      return true
-    }
-
     // First, get the channel to check if it exists and if it's private
     const channel = await db.channel.findUnique({
       where: { id: channelId },
