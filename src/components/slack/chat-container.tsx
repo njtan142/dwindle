@@ -17,20 +17,41 @@ interface ChatContainerProps {
   channels: ChannelForComponent[]
   onUsersRefresh: () => void
   onChannelsRefresh: () => void
+  usersLoading?: boolean
+  channelsLoading?: boolean
+  usersError?: string | null
+  channelsError?: string | null
 }
 
-export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefresh }: ChatContainerProps) {
+export function ChatContainer({
+  users,
+  channels,
+  onUsersRefresh,
+  onChannelsRefresh,
+  usersLoading = false,
+  channelsLoading = false,
+  usersError = null,
+  channelsError = null
+}: ChatContainerProps) {
   const { data: session } = useSession()
   const [messages, setMessages] = useState<MessageForComponent[]>([])
   const [currentChannel, setCurrentChannel] = useState<string | null>(null)
- const [isTyping, setIsTyping] = useState(false)
- const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null)
- const [isChannelsPanelOpen, setIsChannelsPanelOpen] = useState(true)
- const [isMembersPanelOpen, setIsMembersPanelOpen] = useState(true)
- const [isQuickSwitcherOpen, setIsQuickSwitcherOpen] = useState(false)
- 
- const socket = useSocket()
- const chatContainerRef = useRef<HTMLDivElement>(null)
+  const [isTyping, setIsTyping] = useState(false)
+  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null)
+  const [isChannelsPanelOpen, setIsChannelsPanelOpen] = useState(true)
+  const [isMembersPanelOpen, setIsMembersPanelOpen] = useState(true)
+  const [isQuickSwitcherOpen, setIsQuickSwitcherOpen] = useState(false)
+  // Add state for window focus tracking
+  const [isWindowFocused, setIsWindowFocused] = useState(true)
+  // Add state for messages loading
+  const [messagesLoading, setMessagesLoading] = useState(false)
+  
+  const socket = useSocket()
+  const chatContainerRef = useRef<HTMLDivElement>(null)
+  // Add ref for last fetch time
+  const lastFetchTimeRef = useRef<number>(0)
+  // Add ref for fetch debounce timeout
+ const fetchDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Set the initial current channel to the general channel
   useEffect(() => {
@@ -42,9 +63,30 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
     }
   }, [channels, currentChannel])
 
-  // Fetch messages when channel changes
+  // Add focus/blur event listeners
   useEffect(() => {
-    const fetchMessages = async (channelId: string) => {
+    const handleFocus = () => setIsWindowFocused(true);
+    const handleBlur = () => setIsWindowFocused(false);
+    
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+
+  // Enhance message fetching with debounce
+  const fetchMessagesWithDebounce = useCallback((channelId: string) => {
+    // Clear existing timeout if there is one
+    if (fetchDebounceTimeoutRef.current) {
+      clearTimeout(fetchDebounceTimeoutRef.current);
+    }
+
+    // Set new timeout for debounced fetch
+    fetchDebounceTimeoutRef.current = setTimeout(async () => {
+      setMessagesLoading(true);
       try {
         const response = await fetch(`/api/messages?channelId=${channelId}`)
         if (response.ok) {
@@ -53,13 +95,28 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
         }
       } catch (error) {
         console.error('Error fetching messages:', error)
+      } finally {
+        setMessagesLoading(false);
+      }
+    }, 100); // 100ms debounce delay
+  }, []);
+
+  // Fetch messages when channel changes or window regains focus
+  useEffect(() => {
+    if (session && currentChannel) {
+      // Only fetch if window is focused
+      if (isWindowFocused) {
+        fetchMessagesWithDebounce(currentChannel);
       }
     }
-
-    if (session && currentChannel) {
-      fetchMessages(currentChannel)
-    }
-  }, [currentChannel, channels, session])
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (fetchDebounceTimeoutRef.current) {
+        clearTimeout(fetchDebounceTimeoutRef.current);
+      }
+    };
+  }, [currentChannel, channels, session, isWindowFocused, fetchMessagesWithDebounce])
 
   // Load panel visibility state from localStorage on component mount
   useEffect(() => {
@@ -109,27 +166,59 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
   useEffect(() => {
     if (socket.messages.length === 0 || !currentChannel) return
 
-    const lastSocketMessage = socket.messages[socket.messages.length - 1]
+    // Enhanced filtering for duplicate messages
+    const newMessages = socket.messages.filter(socketMessage => {
+      // Check if message is for current channel
+      if (socketMessage.channelId !== currentChannel) return false
+      
+      // Check if message already exists by ID
+      const existsById = messages.some(existingMessage => existingMessage.id === socketMessage.id)
+      if (existsById) return false
+      
+      // Additional check: prevent duplicates by content and timestamp within a short time window
+      const existsByContentAndTime = messages.some(existingMessage => {
+        // Check if content matches and timestamps are within 1 second of each other
+        const timeDiff = Math.abs(
+          new Date(socketMessage.timestamp).getTime() - new Date(existingMessage.timestamp).getTime()
+        )
+        return (
+          existingMessage.content === socketMessage.text &&
+          timeDiff < 1000 // 1 second tolerance
+        )
+      })
+      
+      return !existsByContentAndTime
+    })
 
-    // Avoid adding duplicates
-    if (messages.some(m => m.id === lastSocketMessage.id)) {
-      return
-    }
-    
-    if (lastSocketMessage.channelId === currentChannel) {
-      const user = users.find(u => u.id === lastSocketMessage.senderId)
-      if (user) {
-        const newMessage: MessageForComponent = {
-          id: lastSocketMessage.id,
-          content: lastSocketMessage.text,
-          userId: lastSocketMessage.senderId,
-          channelId: lastSocketMessage.channelId,
-          timestamp: lastSocketMessage.timestamp,
-          user: user,
-          isEdited: false
+    // Process only new messages
+    if (newMessages.length > 0) {
+      const enrichedMessages = newMessages.map(socketMessage => {
+        const user = users.find(u => u.id === socketMessage.senderId)
+        if (user) {
+          return {
+            id: socketMessage.id,
+            content: socketMessage.text,
+            userId: socketMessage.senderId,
+            channelId: socketMessage.channelId,
+            timestamp: socketMessage.timestamp,
+            user: user,
+            isEdited: false
+          }
         }
-        setMessages(prevMessages => [...prevMessages, newMessage])
-      }
+        return null
+      }).filter(Boolean) as MessageForComponent[]
+
+      setMessages(prevMessages => {
+        // Additional deduplication when adding to state
+        const uniqueNewMessages = enrichedMessages.filter(newMsg =>
+          !prevMessages.some(existingMsg =>
+            existingMsg.id === newMsg.id ||
+            (existingMsg.content === newMsg.content &&
+             Math.abs(new Date(newMsg.timestamp).getTime() - new Date(existingMsg.timestamp).getTime()) < 1000)
+          )
+        )
+        return [...prevMessages, ...uniqueNewMessages]
+      })
     }
   }, [socket.messages, channels, currentChannel, users, messages])
 
@@ -278,6 +367,8 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
           }}
           onChannelCreated={handleChannelCreated}
           onCollapse={toggleChannelsPanel}
+          loading={channelsLoading}
+          error={channelsError}
         />
       ) : (
         // Show a minimal button to expand the channels panel when it's collapsed
@@ -331,6 +422,7 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
         <MessageList
           messages={channelMessages}
           currentChannel={currentChannelData?.name || 'general'}
+          loading={messagesLoading}
         />
 
         {/* Typing indicator */}
@@ -355,6 +447,8 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
           users={users}
           onCollapse={toggleMembersPanel}
           onDirectMessage={handleDirectMessage}
+          loading={usersLoading}
+          error={usersError}
         />
       ) : (
         // Show a minimal button to expand the members panel when it's collapsed

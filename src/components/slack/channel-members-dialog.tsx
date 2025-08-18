@@ -25,36 +25,62 @@ export function ChannelMembersDialog({ channelId, channelName, currentUser, onMe
   const [searchTerm, setSearchTerm] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isAddingMember, setIsAddingMember] = useState(false)
+  const [isRemovingMember, setIsRemovingMember] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
+  const [maxRetries] = useState(3)
   const { toast } = useToast()
 
   // Fetch channel members
-  const fetchMembers = async () => {
+  const fetchMembers = async (retryAttempt = 0) => {
     setIsLoading(true)
     setError(null)
+    let response: Response | undefined;
     try {
-      const response = await fetch(`/api/channels/${channelId}/members`)
+      response = await fetch(`/api/channels/${channelId}/members`)
       if (response.ok) {
         const data = await response.json()
         setMembers(data)
+        setRetryCount(0) // Reset retry count on success
       } else {
         const error = await response.json()
-        setError(error.error || 'Failed to fetch members')
+        const errorMessage = error.error || 'Failed to fetch members. Please try again.'
+        
+        if (response.status >= 500 && retryAttempt < maxRetries) {
+          // Retry for server errors
+          setTimeout(() => {
+            fetchMembers(retryAttempt + 1)
+          }, 1000 * Math.pow(2, retryAttempt)) // Exponential backoff
+          return
+        }
+        
+        setError(errorMessage)
         toast({
           title: 'Error',
-          description: error.error || 'Failed to fetch members',
+          description: errorMessage,
           variant: 'destructive'
         })
       }
     } catch (err) {
-      setError('Failed to fetch members')
+      // Retry for network errors
+      if (retryAttempt < maxRetries) {
+        setTimeout(() => {
+          fetchMembers(retryAttempt + 1)
+        }, 1000 * Math.pow(2, retryAttempt)) // Exponential backoff
+        return
+      }
+      
+      const errorMessage = 'Network error. Please check your connection and try again.'
+      setError(errorMessage)
       toast({
         title: 'Error',
-        description: 'Failed to fetch members',
+        description: errorMessage,
         variant: 'destructive'
       })
     } finally {
-      setIsLoading(false)
+      if (retryAttempt >= maxRetries || error || response?.ok) {
+        setIsLoading(false)
+      }
     }
   }
 
@@ -72,12 +98,13 @@ export function ChannelMembersDialog({ channelId, channelName, currentUser, onMe
   }
 
   // Add member to channel
-  const addMember = async (userId: string) => {
+  const addMember = async (userId: string, retryAttempt = 0) => {
     if (isAddingMember) return
 
     setIsAddingMember(true)
+    let response: Response | undefined;
     try {
-      const response = await fetch(`/api/channels/${channelId}/members`, {
+      response = await fetch(`/api/channels/${channelId}/members`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -95,27 +122,51 @@ export function ChannelMembersDialog({ channelId, channelName, currentUser, onMe
         if (onMembersChange) onMembersChange()
       } else {
         const error = await response.json()
+        const errorMessage = error.error || 'Failed to add member. Please try again.'
+        
+        if (response.status >= 500 && retryAttempt < maxRetries) {
+          // Retry for server errors
+          setTimeout(() => {
+            addMember(userId, retryAttempt + 1)
+          }, 1000 * Math.pow(2, retryAttempt)) // Exponential backoff
+          return
+        }
+        
         toast({
           title: 'Error',
-          description: error.error || 'Failed to add member',
+          description: errorMessage,
           variant: 'destructive'
         })
       }
     } catch (err) {
+      // Retry for network errors
+      if (retryAttempt < maxRetries) {
+        setTimeout(() => {
+          addMember(userId, retryAttempt + 1)
+        }, 1000 * Math.pow(2, retryAttempt)) // Exponential backoff
+        return
+      }
+      
       toast({
         title: 'Error',
-        description: 'Failed to add member',
+        description: 'Network error. Please check your connection and try again.',
         variant: 'destructive'
       })
     } finally {
-      setIsAddingMember(false)
+      if (retryAttempt >= maxRetries || (error && retryAttempt === 0)) {
+        setIsAddingMember(false)
+      }
     }
   }
 
   // Remove member from channel
-  const removeMember = async (userId: string, userName: string) => {
+  const removeMember = async (userId: string, userName: string, retryAttempt = 0) => {
+    if (isRemovingMember) return
+    
+    setIsRemovingMember(userId)
+    let response: Response | undefined;
     try {
-      const response = await fetch(`/api/channels/${channelId}/members/${userId}`, {
+      response = await fetch(`/api/channels/${channelId}/members/${userId}`, {
         method: 'DELETE'
       })
 
@@ -129,18 +180,42 @@ export function ChannelMembersDialog({ channelId, channelName, currentUser, onMe
         if (onMembersChange) onMembersChange()
       } else {
         const error = await response.json()
+        const errorMessage = error.error || 'Failed to remove member. Please try again.'
+        
+        if (response.status >= 500 && retryAttempt < maxRetries) {
+          // Retry for server errors
+          setTimeout(() => {
+            setIsRemovingMember(null)
+            removeMember(userId, userName, retryAttempt + 1)
+          }, 1000 * Math.pow(2, retryAttempt)) // Exponential backoff
+          return
+        }
+        
         toast({
           title: 'Error',
-          description: error.error || 'Failed to remove member',
+          description: errorMessage,
           variant: 'destructive'
         })
       }
     } catch (err) {
+      // Retry for network errors
+      if (retryAttempt < maxRetries) {
+        setTimeout(() => {
+          setIsRemovingMember(null)
+          removeMember(userId, userName, retryAttempt + 1)
+        }, 1000 * Math.pow(2, retryAttempt)) // Exponential backoff
+        return
+      }
+      
       toast({
         title: 'Error',
-        description: 'Failed to remove member',
+        description: 'Network error. Please check your connection and try again.',
         variant: 'destructive'
       })
+    } finally {
+      if (retryAttempt >= maxRetries || (error && retryAttempt === 0)) {
+        setIsRemovingMember(null)
+      }
     }
   }
 
@@ -214,8 +289,9 @@ export function ChannelMembersDialog({ channelId, channelName, currentUser, onMe
                         size="sm"
                         className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
                         onClick={() => removeMember(member.id, member.name)}
+                        disabled={isRemovingMember === member.id}
                       >
-                        Remove
+                        {isRemovingMember === member.id ? <LoadingSpinner size="sm" /> : 'Remove'}
                       </Button>
                     )}
                   </div>

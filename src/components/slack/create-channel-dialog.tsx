@@ -24,6 +24,8 @@ interface CreateChannelDialogProps {
 export function CreateChannelDialog({ onChannelCreated }: CreateChannelDialogProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
+  const [maxRetries] = useState(3)
 
   // Initialize form with react-hook-form
   const form = useForm<ChannelFormValues>({
@@ -38,8 +40,9 @@ export function CreateChannelDialog({ onChannelCreated }: CreateChannelDialogPro
     if (isLoading) return
 
     setIsLoading(true)
+    let response: Response | undefined;
     try {
-      const response = await fetch('/api/channels', {
+      response = await fetch('/api/channels', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -55,22 +58,48 @@ export function CreateChannelDialog({ onChannelCreated }: CreateChannelDialogPro
       if (response.ok) {
         form.reset()
         setIsOpen(false)
+        setRetryCount(0) // Reset retry count on success
         onChannelCreated()
       } else {
         const error = await response.json()
+        const errorMessage = error.error || 'Failed to create channel. Please try again.'
+        
+        if (response.status >= 500 && retryCount < maxRetries) {
+          // Retry for server errors
+          setRetryCount(prev => prev + 1)
+          setTimeout(() => {
+            setIsLoading(false)
+            onSubmit(data)
+          }, 1000 * Math.pow(2, retryCount)) // Exponential backoff
+          return
+        }
+        
         form.setError('root', {
           type: 'manual',
-          message: error.error || 'Failed to create channel'
+          message: errorMessage
         })
       }
     } catch (error) {
       console.error('Error creating channel:', error)
+      
+      // Retry for network errors
+      if (retryCount < maxRetries) {
+        setRetryCount(prev => prev + 1)
+        setTimeout(() => {
+          setIsLoading(false)
+          onSubmit(data)
+        }, 1000 * Math.pow(2, retryCount)) // Exponential backoff
+        return
+      }
+      
       form.setError('root', {
         type: 'manual',
-        message: 'Failed to create channel'
+        message: 'Network error. Please check your connection and try again.'
       })
     } finally {
-      setIsLoading(false)
+      if (retryCount >= maxRetries || (form.formState.errors.root && retryCount === 0) || response?.ok) {
+        setIsLoading(false)
+      }
     }
   }
 

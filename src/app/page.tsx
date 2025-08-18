@@ -5,12 +5,16 @@ import { useEffect, useState } from 'react'
 import { Sidebar } from '@/components/slack/sidebar'
 import { ChatContainer } from '@/components/slack/chat-container'
 import { UserForComponent, ChannelForComponent } from '@/types'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function SlackClone() {
   const { data: session, status } = useSession()
   const [users, setUsers] = useState<UserForComponent[]>([])
   const [channels, setChannels] = useState<ChannelForComponent[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [usersLoading, setUsersLoading] = useState(true)
+  const [channelsLoading, setChannelsLoading] = useState(true)
+  const [usersError, setUsersError] = useState<string | null>(null)
+  const [channelsError, setChannelsError] = useState<string | null>(null)
 
   // Fetch data from APIs
   useEffect(() => {
@@ -22,23 +26,31 @@ export default function SlackClone() {
     if (status === 'authenticated') {
       fetchUsers()
       fetchChannels()
-      setIsLoading(false)
     }
   }, [status])
 
   const fetchUsers = async () => {
+    setUsersLoading(true)
+    setUsersError(null)
     try {
       const response = await fetch('/api/users')
       if (response.ok) {
         const userData = await response.json()
         setUsers(userData)
+      } else {
+        setUsersError('Failed to fetch users')
       }
     } catch (error) {
       console.error('Error fetching users:', error)
+      setUsersError('Error fetching users')
+    } finally {
+      setUsersLoading(false)
     }
   }
 
   const fetchChannels = async () => {
+    setChannelsLoading(true)
+    setChannelsError(null)
     try {
       const response = await fetch('/api/channels')
       if (response.ok) {
@@ -46,21 +58,26 @@ export default function SlackClone() {
         console.log("channelsData", channelsData)
         setChannels(channelsData)
       } else {
-        console.log("fetch for channels error")
-        console.log(response.text())
+        setChannelsError('Failed to fetch channels')
       }
     } catch (error) {
       console.error('Error fetching channels:', error)
+      setChannelsError('Error fetching channels')
+    } finally {
+      setChannelsLoading(false)
     }
   }
 
-  if (status === 'loading' || isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading...</div>
-      </div>
-    )
-  }
+   if (status === 'loading' || (usersLoading && channelsLoading)) {
+     return (
+       <div className="flex items-center justify-center min-h-screen">
+         <div className="flex flex-col items-center space-y-4">
+           <Skeleton className="h-8 w-32" />
+           <Skeleton className="h-4 w-48" />
+         </div>
+       </div>
+     )
+   }
 
   if (!session) {
     return null // Will redirect to sign-in
@@ -72,11 +89,15 @@ export default function SlackClone() {
       <Sidebar />
       
       {/* Main Chat Container */}
-      <ChatContainer 
+      <ChatContainer
         users={users}
         channels={channels}
         onUsersRefresh={fetchUsers}
         onChannelsRefresh={fetchChannels}
+        usersLoading={usersLoading}
+        channelsLoading={channelsLoading}
+        usersError={usersError}
+        channelsError={channelsError}
       />
     </div>
   )

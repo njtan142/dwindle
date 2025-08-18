@@ -16,6 +16,8 @@ interface ChannelsPanelProps {
   onChannelSelect: (channelName: string) => void;
   onChannelCreated: () => void;
   onCollapse?: () => void;
+  loading?: boolean;
+  error?: string | null;
 }
 
 export function ChannelsPanel({
@@ -24,6 +26,8 @@ export function ChannelsPanel({
   onChannelSelect,
   onChannelCreated,
   onCollapse,
+  loading = false,
+  error = null,
 }: ChannelsPanelProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState<"all" | "public" | "private" | "recent">(
@@ -132,14 +136,27 @@ export function ChannelsPanel({
 
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-0.5">
-          {filteredChannels.map((channel) => (
-            <ChannelItem
-              key={channel.id}
-              channel={channel}
-              isSelected={currentChannel === channel.name}
-              onSelect={onChannelSelect}
-            />
-          ))}
+          {loading ? (
+            // Show skeleton loaders when loading
+            Array.from({ length: 5 }).map((_, index) => (
+              <div key={index} className="flex items-center space-x-2 p-2">
+                <div className="w-3 h-3 rounded-full bg-gray-200 animate-pulse"></div>
+                <div className="h-4 flex-1 rounded bg-gray-200 animate-pulse"></div>
+              </div>
+            ))
+          ) : error ? (
+            // Show error message
+            <div className="p-2 text-red-500 text-sm">{error}</div>
+          ) : (
+            filteredChannels.map((channel) => (
+              <ChannelItem
+                key={channel.id}
+                channel={channel}
+                isSelected={currentChannel === channel.name}
+                onSelect={onChannelSelect}
+              />
+            ))
+          )}
         </div>
       </ScrollArea>
 
