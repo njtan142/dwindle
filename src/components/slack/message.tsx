@@ -2,6 +2,7 @@
 
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { MessageForComponent } from '@/types'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface MessageProps {
  message: MessageForComponent
@@ -18,11 +19,22 @@ export function Message({ message }: MessageProps) {
   return (
     <div className="flex gap-3 group hover:bg-accent -mx-2 px-3 py-3 rounded-lg transition-colors">
       <div className="flex-shrink-0">
-        <UserAvatar
-          name={message.user.name}
-          avatar={message.user.avatar}
-          className="w-10 h-10"
-        />
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <UserAvatar
+                  name={message.user.name}
+                  avatar={message.user.avatar}
+                  className="w-10 h-10"
+                />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{message.user.name}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">

@@ -6,6 +6,8 @@ import { ChannelItem } from '@/components/ui/channel-item'
 import { ChannelForComponent } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Separator } from '@/components/ui/separator'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useState, useMemo } from 'react'
 
 interface ChannelsPanelProps {
@@ -72,32 +74,26 @@ export function ChannelsPanel({ currentChannel, channels, onChannelSelect, onCha
       </div>
       
       {/* Filter Buttons */}
-      <div className="px-2 pb-2 flex gap-1">
-        <Button
-          variant={filter === 'all' ? 'default' : 'outline'}
-          size="sm"
-          className="flex-1 text-xs h-7"
-          onClick={() => setFilter('all')}
+      <div className="px-2 pb-2">
+        <ToggleGroup
+          type="single"
+          value={filter}
+          onValueChange={(value) => value && setFilter(value as any)}
+          className="w-full"
         >
-          All
-        </Button>
-        <Button
-          variant={filter === 'public' ? 'default' : 'outline'}
-          size="sm"
-          className="flex-1 text-xs h-7"
-          onClick={() => setFilter('public')}
-        >
-          Public
-        </Button>
-        <Button
-          variant={filter === 'private' ? 'default' : 'outline'}
-          size="sm"
-          className="flex-1 text-xs h-7"
-          onClick={() => setFilter('private')}
-        >
-          Private
-        </Button>
+          <ToggleGroupItem value="all" aria-label="All channels" className="flex-1 text-xs h-7">
+            All
+          </ToggleGroupItem>
+          <ToggleGroupItem value="public" aria-label="Public channels" className="flex-1 text-xs h-7">
+            Public
+          </ToggleGroupItem>
+          <ToggleGroupItem value="private" aria-label="Private channels" className="flex-1 text-xs h-7">
+            Private
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
+      
+      <Separator className="my-2" />
       
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-0.5">
@@ -112,7 +108,9 @@ export function ChannelsPanel({ currentChannel, channels, onChannelSelect, onCha
         </div>
       </ScrollArea>
 
-      <div className="p-3 border-t border-gray-700">
+      <Separator className="my-2" />
+      
+      <div className="p-3">
         <CreateChannelDialog onChannelCreated={onChannelCreated} />
       </div>
     </div>

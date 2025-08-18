@@ -6,6 +6,10 @@ import { UserForComponent } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useState, useMemo } from 'react'
 
 interface MembersPanelProps {
@@ -82,24 +86,23 @@ export function MembersPanel({ users, onCollapse, onDirectMessage }: MembersPane
       </div>
       
       {/* Filter Buttons */}
-      <div className="flex gap-1 mb-3">
-        <Button
-          variant={filter === 'all' ? 'default' : 'outline'}
-          size="sm"
-          className="flex-1 text-xs h-7"
-          onClick={() => setFilter('all')}
+      <div className="mb-3">
+        <ToggleGroup
+          type="single"
+          value={filter}
+          onValueChange={(value) => value && setFilter(value as any)}
+          className="w-full"
         >
-          All
-        </Button>
-        <Button
-          variant={filter === 'online' ? 'default' : 'outline'}
-          size="sm"
-          className="flex-1 text-xs h-7"
-          onClick={() => setFilter('online')}
-        >
-          Online
-        </Button>
+          <ToggleGroupItem value="all" aria-label="All members" className="flex-1 text-xs h-7">
+            All
+          </ToggleGroupItem>
+          <ToggleGroupItem value="online" aria-label="Online members" className="flex-1 text-xs h-7">
+            Online
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
+      
+      <Separator className="my-2" />
       
       <ScrollArea className="h-[calc(100vh-250px)]">
         <div className="space-y-2">
@@ -113,13 +116,24 @@ export function MembersPanel({ users, onCollapse, onDirectMessage }: MembersPane
                   onMouseLeave={handleUserLeave}
                 >
                   <div className="relative">
-                    <UserAvatar
-                      name={user.name}
-                      avatar={user.avatar}
-                      className="w-6 h-6"
-                    />
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div>
+                            <UserAvatar
+                              name={user.name}
+                              avatar={user.avatar}
+                              className="w-6 h-6"
+                            />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{user.name}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     {user.online && (
-                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                      <Badge className="absolute -bottom-0.5 -right-0.5 w-3 h-3 p-0 bg-green-500 border-2 border-white rounded-full"></Badge>
                     )}
                   </div>
                   <span className="text-sm text-gray-700">{user.name}</span>
@@ -135,7 +149,14 @@ export function MembersPanel({ users, onCollapse, onDirectMessage }: MembersPane
                   <div>
                     <h4 className="font-semibold">{user.name}</h4>
                     <p className="text-xs text-gray-500">
-                      {user.online ? 'Online' : 'Offline'}
+                      {user.online ? (
+                        <span className="flex items-center">
+                          <Badge className="w-2 h-2 p-0 mr-1 bg-green-500 border-none"></Badge>
+                          Online
+                        </span>
+                      ) : (
+                        'Offline'
+                      )}
                     </p>
                   </div>
                 </div>
