@@ -223,10 +223,10 @@ export function ChatContainer({
   }, [socket.messages, channels, currentChannel, users, messages])
 
   const currentUser: UserForComponent | undefined = session?.user ? {
-    id: session.user.id,
+    id: (session.user as any).id || '',
     name: session.user.name || 'Anonymous',
     email: session.user.email || '',
-    avatar: session.user.avatar,
+    avatar: (session.user as any).image || '',
     online: true,
     createdAt: new Date(),
     updatedAt: new Date()
@@ -241,7 +241,22 @@ export function ChatContainer({
     if (!targetChannelId) return
     
     try {
-      // Send to API first
+      // Create a temporary message object for immediate display
+      const tempMessage: any = {
+        id: `temp-${Date.now()}`,
+        content: messageContent,
+        userId: currentUser.id,
+        channelId: targetChannelId,
+        timestamp: new Date().toISOString(),
+        user: currentUser,
+        isEdited: false,
+        editedAt: null
+      };
+      
+      // Immediately add to local state for instant UI feedback
+      setMessages(prevMessages => [...prevMessages, tempMessage]);
+      
+      // Send to API
       const response = await fetch('/api/messages', {
         method: 'POST',
         headers: {
@@ -254,8 +269,17 @@ export function ChatContainer({
       })
 
       if (response.ok) {
-        const newMessage = await response.json()
-        console.log(newMessage)
+        const savedMessage = await response.json()
+        console.log(savedMessage)
+        
+        // Update the temporary message with the real ID from the database
+        setMessages(prevMessages =>
+          prevMessages.map(msg =>
+            msg.id === tempMessage.id
+              ? {...tempMessage, id: savedMessage.data.id}
+              : msg
+          )
+        );
         
         // Send via socket for real-time delivery to other clients
         socket.sendMessage({
@@ -265,10 +289,18 @@ export function ChatContainer({
           channelId: targetChannelId
         })
       } else {
+        // Remove the temporary message if API call failed
+        setMessages(prevMessages =>
+          prevMessages.filter(msg => msg.id !== tempMessage.id)
+        );
         console.log("fetch for messages error")
         response.text().then(text => console.log(text))
       }
     } catch (error) {
+      // Remove the temporary message if there was an error
+      setMessages(prevMessages =>
+        prevMessages.filter(msg => msg.id !== `temp-${Date.now()}`)
+      );
       console.error('Error sending message:', error)
     }
   }, [currentUser, channels, currentChannel, socket])

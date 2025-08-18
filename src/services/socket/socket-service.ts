@@ -385,11 +385,11 @@ export function useSocketService() {
     const handleNewMessage = (message: any) => {
       messagesRef.current = [...messagesRef.current, message]
     }
-
+    
     // We only need to listen to newMessage events, not messageSent
     // messageSent is just a confirmation for the sender
     socketService.on('newMessage', handleNewMessage)
-
+    
     return () => {
       socketService.off('newMessage', handleNewMessage)
     }
