@@ -267,6 +267,7 @@ describe('Channel Members API Endpoints', () => {
       expect(response.status).toBe(201);
       expect(data).toEqual(mockNewMembership);
     });
+  });
   
   describe('DELETE /api/channels/[id]/members/[userId]', () => {
     it('should return 400 if request validation fails', async () => {

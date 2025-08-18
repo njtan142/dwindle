@@ -1,92 +1,52 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { createProtectedApiHandler } from '@/lib/middleware'
-import { createChannelSchema, validateRequest } from '@/lib/validation'
+import { NextRequest } from 'next/server'
+import { createApiHandler } from '@/lib/api-middleware'
+import { createChannelSchema } from '@/lib/validation'
+import { createChannel, getUserChannels } from '@/services/database/channel-service'
+import { createApiResponse, ConflictError } from '@/lib/api-utils'
 
-// GET handler using middleware
-const getHandler = createProtectedApiHandler(async (request, user) => {
+// GET handler using new middleware
+export const GET = createApiHandler(async (request, user) => {
   try {
-    const channels = await db.channel.findMany({
-      where: {
-        OR: [
-          {
-            type: 'PUBLIC'
-          },
-          {
-            memberships: {
-              some: {
-                userId: user.id
-              }
-            }
-          }
-        ]
-      },
-      include: {
-        memberships: {
-          where: { userId: user.id },
-          select: { userId: true }
-        },
-        _count: {
-          select: { messages: true, memberships: true }
-        }
-      },
-      orderBy: { name: 'asc' }
-    })
-
-    return NextResponse.json(channels)
+    const channels = await getUserChannels(user.id)
+    return createApiResponse(channels, 200, 'Channels fetched successfully')
   } catch (error) {
     console.error('Error fetching channels:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return createApiResponse(null, 500, 'Internal server error')
   }
 })
 
-// POST handler using middleware and validation
-const postHandler = createProtectedApiHandler(async (request: NextRequest, user) => {
+// POST handler using new middleware and validation
+export const POST = createApiHandler(async (request: NextRequest, user) => {
   try {
     const body = await request.json()
     
     // Validate request body
-    const validation = validateRequest(createChannelSchema, body)
+    const validation = createChannelSchema.safeParse(body)
     if (!validation.success) {
-      return NextResponse.json({ error: validation.error }, { status: 400 })
+      return createApiResponse(
+        null,
+        400,
+        'Validation failed',
+        validation.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join(', ')
+      )
     }
     
     const { name, description, type } = validation.data
 
     // Check if channel name already exists
-    const existingChannel = await db.channel.findUnique({
-      where: { name }
-    })
+    const existingChannel = await getUserChannels(user.id).then(channels =>
+      channels.find(channel => channel.name === name)
+    )
 
     if (existingChannel) {
-      return NextResponse.json({ error: 'Channel name already exists' }, { status: 409 })
+      return createApiResponse(null, 409, 'Channel name already exists', 'CHANNEL_EXISTS')
     }
 
-    const channel = await db.channel.create({
-      data: {
-        name,
-        description,
-        type,
-        isPrivate: type === 'PRIVATE',
-        memberships: {
-          create: {
-            userId: user.id
-          }
-        }
-      },
-      include: {
-        memberships: {
-          select: { userId: true }
-        }
-      }
-    })
+    const channel = await createChannel(name, description, type, user.id)
 
-    return NextResponse.json(channel, { status: 201 })
+    return createApiResponse(channel, 201, 'Channel created successfully')
   } catch (error) {
     console.error('Error creating channel:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return createApiResponse(null, 500, 'Internal server error')
   }
 })
-
-export const GET = getHandler
-export const POST = postHandler

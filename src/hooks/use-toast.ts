@@ -2,6 +2,7 @@
 
 // Inspired by react-hot-toast library
 import * as React from "react"
+import { UseToastReturn } from "@/types"
 
 import type {
   ToastActionElement,
@@ -172,7 +173,11 @@ function toast({ ...props }: Toast) {
   }
 }
 
-function useToast() {
+/**
+ * A hook for managing toast notifications
+ * @returns {UseToastReturn} Object containing toasts array and toast management functions
+ */
+function useToast(): UseToastReturn {
   const [state, setState] = React.useState<State>(memoryState)
 
   React.useEffect(() => {
@@ -186,7 +191,7 @@ function useToast() {
   }, [state])
 
   return {
-    ...state,
+    toasts: state.toasts,
     toast,
     dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
   }

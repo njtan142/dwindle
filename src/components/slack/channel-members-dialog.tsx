@@ -58,7 +58,7 @@ export function ChannelMembersDialog({ channelId, channelName, currentUser, onMe
         toast({
           title: 'Error',
           description: errorMessage,
-          variant: 'destructive'
+          action: undefined
         })
       }
     } catch (err) {
@@ -75,7 +75,7 @@ export function ChannelMembersDialog({ channelId, channelName, currentUser, onMe
       toast({
         title: 'Error',
         description: errorMessage,
-        variant: 'destructive'
+        action: undefined
       })
     } finally {
       if (retryAttempt >= maxRetries || error || response?.ok) {
@@ -135,7 +135,7 @@ export function ChannelMembersDialog({ channelId, channelName, currentUser, onMe
         toast({
           title: 'Error',
           description: errorMessage,
-          variant: 'destructive'
+          action: undefined
         })
       }
     } catch (err) {
@@ -150,7 +150,7 @@ export function ChannelMembersDialog({ channelId, channelName, currentUser, onMe
       toast({
         title: 'Error',
         description: 'Network error. Please check your connection and try again.',
-        variant: 'destructive'
+        action: undefined
       })
     } finally {
       if (retryAttempt >= maxRetries || (error && retryAttempt === 0)) {
@@ -194,7 +194,7 @@ export function ChannelMembersDialog({ channelId, channelName, currentUser, onMe
         toast({
           title: 'Error',
           description: errorMessage,
-          variant: 'destructive'
+          action: undefined
         })
       }
     } catch (err) {
@@ -210,7 +210,7 @@ export function ChannelMembersDialog({ channelId, channelName, currentUser, onMe
       toast({
         title: 'Error',
         description: 'Network error. Please check your connection and try again.',
-        variant: 'destructive'
+        action: undefined
       })
     } finally {
       if (retryAttempt >= maxRetries || (error && retryAttempt === 0)) {

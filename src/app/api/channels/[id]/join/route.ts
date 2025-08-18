@@ -1,20 +1,41 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { createProtectedApiHandler } from '@/lib/middleware'
+import { NextRequest } from 'next/server'
+import { createApiHandler } from '@/lib/api-middleware'
 import { channelExists, getChannelById } from '@/lib/channel-service'
-import { joinChannelSchema, validateRequest } from '@/lib/validation'
+import { joinChannelSchema } from '@/lib/validation'
+import { db } from '@/lib/db'
+import { createApiResponse } from '@/lib/api-utils'
 
-// POST handler using middleware and validation
-// @ts-ignore
-const postHandler = createProtectedApiHandler(async (request: NextRequest, user, params: { params: { id: string } } | undefined) => {
+// POST handler using new middleware and validation
+export const POST = createApiHandler(async (request: NextRequest, user, params: { params: { id: string } } | undefined) => {
   try {
-    // Validate request parameters
-    const validation = validateRequest(joinChannelSchema, { channelId: params?.params.id })
-    if (!validation.success) {
-      return NextResponse.json({ error: validation.error }, { status: 400 })
+    // Check if params exist
+    if (!params?.params?.id) {
+      return createApiResponse(null, 400, 'Channel ID is required', 'MISSING_CHANNEL_ID')
     }
     
-    const { channelId } = validation.data
+    const { id: channelId } = params.params
+    
+    // Validate request parameters
+    const validation = joinChannelSchema.safeParse({ channelId })
+    if (!validation.success) {
+      return createApiResponse(
+        null,
+        400,
+        'Validation failed',
+        validation.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join(', ')
+      )
+    }
+
+    // Check if channel exists
+    const channelExistsResult = await channelExists(channelId)
+    if (!channelExistsResult) {
+      return createApiResponse(null, 404, 'Channel not found', 'CHANNEL_NOT_FOUND')
+    }
+
+    const channel = await getChannelById(channelId)
+    if (!channel) {
+      return createApiResponse(null, 404, 'Channel not found', 'CHANNEL_NOT_FOUND')
+    }
 
     // Check if user is already a member
     const existingMembership = await db.membership.findUnique({
@@ -27,22 +48,11 @@ const postHandler = createProtectedApiHandler(async (request: NextRequest, user,
     })
 
     if (existingMembership) {
-      return NextResponse.json({ error: 'Already a member of this channel' }, { status: 400 })
-    }
-
-    // Check if channel exists and is not private
-    const channelExistsResult = await channelExists(channelId)
-    if (!channelExistsResult) {
-      return NextResponse.json({ error: 'Channel not found' }, { status: 404 })
-    }
-
-    const channel = await getChannelById(channelId)
-    if (!channel) {
-      return NextResponse.json({ error: 'Channel not found' }, { status: 404 })
+      return createApiResponse(null, 400, 'Already a member of this channel', 'ALREADY_MEMBER')
     }
 
     if (channel.isPrivate && channel.type !== 'DIRECT_MESSAGE') {
-      return NextResponse.json({ error: 'Cannot join private channel' }, { status: 400 })
+      return createApiResponse(null, 403, 'Cannot join private channel', 'PRIVATE_CHANNEL')
     }
 
     const membership = await db.membership.create({
@@ -52,11 +62,9 @@ const postHandler = createProtectedApiHandler(async (request: NextRequest, user,
       }
     })
 
-    return NextResponse.json(membership, { status: 201 })
+    return createApiResponse(membership, 201, 'Successfully joined channel')
   } catch (error) {
     console.error('Error joining channel:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return createApiResponse(null, 500, 'Internal server error')
   }
 })
-
-export const POST = postHandler

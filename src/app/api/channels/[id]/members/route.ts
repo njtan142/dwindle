@@ -1,20 +1,26 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
-import { createProtectedApiHandler } from '@/lib/middleware'
-import { addChannelMemberSchema, validateRequest } from '@/lib/validation'
-import { getChannelById } from '@/lib/channel-service'
+import { createApiHandler } from '@/lib/api-middleware'
+import { addChannelMemberSchema } from '@/lib/validation'
+import { getChannelById, getChannelMembers, addChannelMember, isChannelMember } from '@/lib/channel-service'
 import { getIO } from '@/lib/socket-server'
+import { getUserById } from '@/services/database/user-service'
+import { createApiResponse, NotFoundError, ForbiddenError, ConflictError } from '@/lib/api-utils'
 
 // GET handler to fetch channel members
-// @ts-ignore
-const getHandler = createProtectedApiHandler(async (request: NextRequest, user, params: { params: Promise<{ id: string }> } | undefined) => {
+export const GET = createApiHandler(async (request: NextRequest, user, params: { params: { id: string } } | undefined) => {
   try {
-    const { id: channelId } = await params?.params || {}
+    // Check if params exist
+    if (!params?.params?.id) {
+      return createApiResponse(null, 400, 'Channel ID is required', 'MISSING_CHANNEL_ID')
+    }
+    
+    const { id: channelId } = params.params
 
     // Check if channel exists
     const channel = await getChannelById(channelId)
     if (!channel) {
-      return NextResponse.json({ error: 'Channel not found' }, { status: 404 })
+      return createApiResponse(null, 404, 'Channel not found', 'CHANNEL_NOT_FOUND')
     }
 
     // For private channels, check if the requesting user is a member
@@ -29,52 +35,44 @@ const getHandler = createProtectedApiHandler(async (request: NextRequest, user, 
       })
 
       if (!requestingUserMembership) {
-        return NextResponse.json({ error: 'Not authorized to view members of this channel' }, { status: 403 })
+        return createApiResponse(null, 403, 'Not authorized to view members of this channel', 'UNAUTHORIZED')
       }
     }
 
     // Get all members of the channel
-    const members = await db.user.findMany({
-      where: {
-        memberships: {
-          some: {
-            channelId: channelId
-          }
-        }
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        avatar: true,
-        online: true,
-        createdAt: true
-      },
-      orderBy: { name: 'asc' }
-    })
+    const members = await getChannelMembers(channelId)
 
-    return NextResponse.json(members)
+    return createApiResponse(members, 200, 'Members fetched successfully')
   } catch (error) {
     console.error('Error fetching channel members:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return createApiResponse(null, 500, 'Internal server error')
   }
 })
 
-// POST handler using middleware and validation
-// @ts-ignore
-const postHandler = createProtectedApiHandler(async (request: NextRequest, user, params: { params: Promise<{ id: string }> } | undefined) => {
+// POST handler using new middleware and validation
+export const POST = createApiHandler(async (request: NextRequest, user, params: { params: { id: string } } | undefined) => {
   try {
+    // Check if params exist
+    if (!params?.params?.id) {
+      return createApiResponse(null, 400, 'Channel ID is required', 'MISSING_CHANNEL_ID')
+    }
+    
+    const { id: channelId } = params.params
     const body = await request.json()
     
     // Validate request body and parameters
-    const { id: channelId } = await params?.params || {}
-    const bodyValidation = validateRequest(addChannelMemberSchema, {
+    const bodyValidation = addChannelMemberSchema.safeParse({
       channelId: channelId,
       userId: body.userId
     })
     
     if (!bodyValidation.success) {
-      return NextResponse.json({ error: bodyValidation.error }, { status: 400 })
+      return createApiResponse(
+        null,
+        400,
+        'Validation failed',
+        bodyValidation.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join(', ')
+      )
     }
     
     const { userId } = bodyValidation.data
@@ -82,59 +80,34 @@ const postHandler = createProtectedApiHandler(async (request: NextRequest, user,
     // Check if channel exists
     const channel = await getChannelById(channelId)
     if (!channel) {
-      return NextResponse.json({ error: 'Channel not found' }, { status: 404 })
+      return createApiResponse(null, 404, 'Channel not found', 'CHANNEL_NOT_FOUND')
     }
 
     // Verify the channel is private
     if (!channel.isPrivate) {
-      return NextResponse.json({ error: 'Cannot add members to public channels' }, { status: 400 })
+      return createApiResponse(null, 400, 'Cannot add members to public channels', 'PUBLIC_CHANNEL')
     }
 
     // Check if the requesting user is authorized (is a member of the channel)
-    const requestingUserMembership = await db.membership.findUnique({
-      where: {
-        userId_channelId: {
-          userId: user.id,
-          channelId: channelId
-        }
-      }
-    })
-
-    if (!requestingUserMembership) {
-      return NextResponse.json({ error: 'Not authorized to add members to this channel' }, { status: 403 })
+    const isAuthorized = await isChannelMember(channelId, user.id)
+    if (!isAuthorized) {
+      return createApiResponse(null, 403, 'Not authorized to add members to this channel', 'UNAUTHORIZED')
     }
 
     // Validate that the user being added exists
-    const userToAdd = await db.user.findUnique({
-      where: { id: userId },
-      select: { id: true }
-    })
-
+    const userToAdd = await getUserById(userId)
     if (!userToAdd) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return createApiResponse(null, 404, 'User not found', 'USER_NOT_FOUND')
     }
 
     // Check if the user is already a member
-    const existingMembership = await db.membership.findUnique({
-      where: {
-        userId_channelId: {
-          userId: userId,
-          channelId: channelId
-        }
-      }
-    })
-
-    if (existingMembership) {
-      return NextResponse.json({ error: 'User is already a member of this channel' }, { status: 400 })
+    const isMember = await isChannelMember(channelId, userId)
+    if (isMember) {
+      return createApiResponse(null, 400, 'User is already a member of this channel', 'ALREADY_MEMBER')
     }
 
     // Create a new membership record
-    const membership = await db.membership.create({
-      data: {
-        userId: userId,
-        channelId: channelId
-      }
-    })
+    const membership = await addChannelMember(channelId, userId)
 
     // Get user details for the socket event
     const userToAddDetails = await db.user.findUnique({
@@ -160,12 +133,9 @@ const postHandler = createProtectedApiHandler(async (request: NextRequest, user,
       })
     }
 
-    return NextResponse.json(membership, { status: 201 })
+    return createApiResponse(membership, 201, 'Member added successfully')
   } catch (error) {
     console.error('Error adding member to channel:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return createApiResponse(null, 500, 'Internal server error')
   }
 })
-
-export const GET = getHandler
-export const POST = postHandler

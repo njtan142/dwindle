@@ -1,6 +1,6 @@
 // server.ts - Next.js Standalone + Socket.IO
-import { setupSocket } from '@/lib/socket';
-import { ensureGeneralChannel } from '@/lib/channel-service';
+import { setupSocketEvents } from '@/services/socket/socket-events';
+import { ensureGeneralChannel } from '@/services/database/channel-service';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import next from 'next';
@@ -45,7 +45,7 @@ async function createCustomServer() {
       }
     });
 
-    setupSocket(io);
+    setupSocketEvents(io);
 
     // Store the io instance in global object
     (global as any).socketIOInstance = io;
@@ -80,13 +80,13 @@ async function createCustomServer() {
 
 // Handle hot reloading in development
 if (dev && (module as any).hot) {
-  (module as any).hot.accept('./src/lib/socket', () => {
+  (module as any).hot.accept('@/services/socket/socket-events', () => {
     console.log('Socket handler updated, reinitializing Socket.IO');
     if (io) {
       // Clean up existing connections
       io.removeAllListeners();
       // Re-setup socket with new handler
-      setupSocket(io);
+      setupSocketEvents(io);
     }
   });
 

@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { createPublicApiHandler } from '@/lib/api-middleware'
+import { createApiResponse } from '@/lib/api-utils'
 
-export async function GET() {
-  return NextResponse.json({ message: "Good!" });
-}
+export const GET = createPublicApiHandler(async () => {
+  return createApiResponse(null, 200, 'Service is healthy')
+})

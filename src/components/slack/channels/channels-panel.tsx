@@ -1,0 +1,160 @@
+"use client";
+
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { CreateChannelDialog } from "@/components/slack/channels/create-channel-dialog";
+import { ChannelItem } from "@/components/slack/channels/channel-item";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useState, useMemo } from "react";
+import { ChannelsPanelProps } from '@/types/components'
+
+export function ChannelsPanel({
+  currentChannel,
+  channels,
+  onChannelSelect,
+  onChannelCreated,
+  onCollapse,
+  loading = false,
+  error = null,
+}: ChannelsPanelProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filter, setFilter] = useState<"all" | "public" | "private" | "recent">(
+    "all"
+  );
+
+  // Filter channels based on search term and filter type
+  const filteredChannels = useMemo(() => {
+    return channels.filter((channel) => {
+      // Apply search filter
+      const matchesSearch =
+        channel.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (channel.description &&
+          channel.description.toLowerCase().includes(searchTerm.toLowerCase()));
+
+      // Apply type filter
+      let matchesFilter = true;
+      if (filter === "public") {
+        matchesFilter = !channel.isPrivate;
+      } else if (filter === "private") {
+        matchesFilter = channel.isPrivate;
+      } else if (filter === "recent") {
+        // For demo purposes, we'll consider channels with "general" or "random" as recent
+        // In a real app, this would be based on user activity
+        matchesFilter = channel.name === "general" || channel.name === "random";
+      }
+
+      return matchesSearch && matchesFilter;
+    });
+  }, [channels, searchTerm, filter]);
+
+  return (
+    <div className="w-60 border-r  flex flex-col">
+      <div className="px-3 py-2 border-b flex justify-between items-center">
+        <h2 className="text-xs uppercase text-gray-800 font-semibold tracking-wider">
+          Channels
+        </h2>
+        {onCollapse && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onCollapse}
+            className="text-gray-400 hover:text-black hover:bg-gray-300 p-1 h-auto"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </Button>
+        )}
+      </div>
+
+      {/* Search Input */}
+      <div className="p-2">
+        <Input
+          placeholder="Search channels..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full text-sm"
+        />
+      </div>
+
+      {/* Filter Buttons */}
+      <div className="px-2 pb-2">
+        <ToggleGroup
+          type="single"
+          value={filter}
+          onValueChange={(value) => value && setFilter(value as any)}
+          className="w-full justify-between  rounded-md p-0.5"
+        >
+          <ToggleGroupItem
+            value="all"
+            aria-label="All channels"
+            className="flex-1 text-xs h-7 data-[state=on]:bg-gray-600 data-[state=on]:text-white rounded-sm hover:bg-gray-200"
+          >
+            All
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="public"
+            aria-label="Public channels"
+            className="flex-1 text-xs h-7 data-[state=on]:bg-gray-600 data-[state=on]:text-white rounded-sm hover:bg-gray-200"
+          >
+            Public
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="private"
+            aria-label="Private channels"
+            className="flex-1 text-xs h-7 data-[state=on]:bg-gray-600 data-[state=on]:text-white rounded-sm hover:bg-gray-200"
+          >
+            Private
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+
+      <Separator className="my-2" />
+
+      <ScrollArea className="flex-1">
+        <div className="p-2 space-y-0.5">
+          {loading ? (
+            // Show skeleton loaders when loading
+            Array.from({ length: 5 }).map((_, index) => (
+              <div key={index} className="flex items-center space-x-2 p-2">
+                <div className="w-3 h-3 rounded-full bg-gray-200 animate-pulse"></div>
+                <div className="h-4 flex-1 rounded bg-gray-200 animate-pulse"></div>
+              </div>
+            ))
+          ) : error ? (
+            // Show error message
+            <div className="p-2 text-red-500 text-sm">{error}</div>
+          ) : (
+            filteredChannels.map((channel) => (
+              <ChannelItem
+                key={channel.id}
+                channel={channel}
+                isSelected={currentChannel === channel.name}
+                onSelect={onChannelSelect}
+              />
+            ))
+          )}
+        </div>
+      </ScrollArea>
+
+      <Separator className="my-2" />
+
+      <div className="p-3">
+        <CreateChannelDialog onChannelCreated={onChannelCreated} />
+      </div>
+    </div>
+  );
+}

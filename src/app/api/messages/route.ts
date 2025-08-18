@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { createProtectedApiHandler } from '@/lib/middleware'
+import { NextRequest } from 'next/server'
+import { createApiHandler } from '@/lib/api-middleware'
 import { validateChannelAccess, getChannelByName } from '@/lib/channel-service'
-import { createMessageSchema, validateRequest } from '@/lib/validation'
+import { createMessageSchema } from '@/lib/validation'
+import { getChannelMessages, createMessage } from '@/services/database/message-service'
+import { createApiResponse } from '@/lib/api-utils'
 
 // Helper function to get the general channel ID
 async function getGeneralChannelId() {
@@ -13,8 +14,8 @@ async function getGeneralChannelId() {
   return generalChannel.id
 }
 
-// GET handler using middleware
-const getHandler = createProtectedApiHandler(async (request, user) => {
+// GET handler using new middleware
+export const GET = createApiHandler(async (request, user) => {
   try {
     const { searchParams } = new URL(request.url)
     let channelId = searchParams.get('channelId')
@@ -29,47 +30,36 @@ const getHandler = createProtectedApiHandler(async (request, user) => {
     // Validate channel access using the service
     const hasAccess = await validateChannelAccess(user.id, channelId)
     if (!hasAccess) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      return createApiResponse(null, 403, 'Access denied', 'ACCESS_DENIED')
     }
 
     // Consistent handling for all channels including general
-    const messages = await db.message.findMany({
-      where: { channelId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true,
-            online: true
-          }
-        }
-      },
-      orderBy: { timestamp: 'desc' },
-      take: limit,
-      skip: offset
-    })
+    const messages = await getChannelMessages(channelId, limit, offset)
 
-    return NextResponse.json(messages)
+    return createApiResponse(messages, 200, 'Messages fetched successfully')
    } catch (error: any) {
      console.error('Error fetching messages:', error)
      if (error.message === 'General channel not found') {
-       return NextResponse.json({ error: 'General channel not found' }, { status: 500 })
+       return createApiResponse(null, 500, 'General channel not found', 'GENERAL_CHANNEL_NOT_FOUND')
      }
-     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+     return createApiResponse(null, 500, 'Internal server error')
    }
 })
 
-// POST handler using middleware and validation
-const postHandler = createProtectedApiHandler(async (request: NextRequest, user) => {
+// POST handler using new middleware and validation
+export const POST = createApiHandler(async (request: NextRequest, user) => {
 try {
   const body = await request.json()
   
   // Validate request body
-  const validation = validateRequest(createMessageSchema, body)
+  const validation = createMessageSchema.safeParse(body)
   if (!validation.success) {
-    return NextResponse.json({ error: validation.error }, { status: 400 })
+    return createApiResponse(
+      null,
+      400,
+      'Validation failed',
+      validation.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join(', ')
+    )
   }
   
   let { content, channelId } = validation.data
@@ -82,42 +72,22 @@ try {
   // Validate channel access using the service
   const hasAccess = await validateChannelAccess(user.id, channelId)
   if (!hasAccess) {
-    return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+    return createApiResponse(null, 403, 'Access denied', 'ACCESS_DENIED')
   }
 
   // Consistent handling for all channels including general
-  const message = await db.message.create({
-    data: {
-      content,
-      channelId,
-      userId: user.id
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatar: true,
-          online: true
-        }
-      }
-    }
-  })
+  const message = await createMessage(content, channelId, user.id)
 
-  return NextResponse.json(message, { status: 201 })
+  return createApiResponse(message, 201, 'Message created successfully')
 } catch (error: any) {
   console.error('Error creating message:', error)
   if (error.message === 'General channel not found') {
-    return NextResponse.json({ error: 'General channel not found' }, { status: 500 })
+    return createApiResponse(null, 500, 'General channel not found', 'GENERAL_CHANNEL_NOT_FOUND')
   }
   // Log more specific error information for debugging
   if (error.code === 'P2003') {
     console.error('Foreign key constraint violation - check if channel and user exist in database')
   }
-  return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  return createApiResponse(null, 500, 'Internal server error')
 }
 })
-
-export const GET = getHandler
-export const POST = postHandler

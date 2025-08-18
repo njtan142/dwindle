@@ -1,23 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
-import { createProtectedApiHandler } from '@/lib/middleware'
-import { removeChannelMemberSchema, validateRequest } from '@/lib/validation'
-import { getChannelById } from '@/lib/channel-service'
+import { createApiHandler } from '@/lib/api-middleware'
+import { removeChannelMemberSchema } from '@/lib/validation'
+import { getChannelById, isChannelMember, removeChannelMember } from '@/lib/channel-service'
 import { getIO } from '@/lib/socket-server'
+import { getUserById } from '@/services/database/user-service'
+import { getChannelMembershipCount } from '@/services/database/membership-service'
+import { createApiResponse, NotFoundError, ForbiddenError, ConflictError } from '@/lib/api-utils'
 
-// DELETE handler using middleware and validation
-// @ts-ignore
-const deleteHandler = createProtectedApiHandler(async (request: NextRequest, user, params: { params: Promise<{ id: string, userId: string }> } | undefined) => {
+// DELETE handler using new middleware and validation
+export const DELETE = createApiHandler(async (request: NextRequest, user, params: { params: { id: string, userId: string } } | undefined) => {
   try {
+    // Check if params exist
+    if (!params?.params?.id || !params?.params?.userId) {
+      return createApiResponse(null, 400, 'Channel ID and User ID are required', 'MISSING_PARAMETERS')
+    }
+    
+    const { id: channelId, userId: userIdParam } = params.params
+    
     // Validate request parameters
-    const { id: channelId, userId: userIdParam } = await params?.params || {}
-    const validation = validateRequest(removeChannelMemberSchema, {
+    const validation = removeChannelMemberSchema.safeParse({
       channelId: channelId,
       userId: userIdParam
     })
     
     if (!validation.success) {
-      return NextResponse.json({ error: validation.error }, { status: 400 })
+      return createApiResponse(
+        null,
+        400,
+        'Validation failed',
+        validation.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join(', ')
+      )
     }
     
     const { userId } = validation.data
@@ -25,62 +38,35 @@ const deleteHandler = createProtectedApiHandler(async (request: NextRequest, use
     // Check if channel exists
     const channel = await getChannelById(channelId)
     if (!channel) {
-      return NextResponse.json({ error: 'Channel not found' }, { status: 404 })
+      return createApiResponse(null, 404, 'Channel not found', 'CHANNEL_NOT_FOUND')
     }
 
     // Verify the channel is private
     if (!channel.isPrivate) {
-      return NextResponse.json({ error: 'Cannot remove members from public channels' }, { status: 400 })
+      return createApiResponse(null, 400, 'Cannot remove members from public channels', 'PUBLIC_CHANNEL')
     }
 
     // Check if the requesting user is authorized (is a member of the channel)
-    const requestingUserMembership = await db.membership.findUnique({
-      where: {
-        userId_channelId: {
-          userId: user.id,
-          channelId: channelId
-        }
-      }
-    })
-
-    if (!requestingUserMembership) {
-      return NextResponse.json({ error: 'Not authorized to remove members from this channel' }, { status: 403 })
+    const isAuthorized = await isChannelMember(channelId, user.id)
+    if (!isAuthorized) {
+      return createApiResponse(null, 403, 'Not authorized to remove members from this channel', 'UNAUTHORIZED')
     }
 
     // Verify that the user being removed is actually a member
-    const userToRemoveMembership = await db.membership.findUnique({
-      where: {
-        userId_channelId: {
-          userId: userId,
-          channelId: channelId
-        }
-      }
-    })
-
-    if (!userToRemoveMembership) {
-      return NextResponse.json({ error: 'User is not a member of this channel' }, { status: 400 })
+    const isMember = await isChannelMember(channelId, userId)
+    if (!isMember) {
+      return createApiResponse(null, 400, 'User is not a member of this channel', 'NOT_MEMBER')
     }
 
     // Prevent users from removing themselves if they're the only member
-    const totalMembers = await db.membership.count({
-      where: {
-        channelId: channelId
-      }
-    })
+    const totalMembers = await getChannelMembershipCount(channelId)
 
     if (totalMembers <= 1 && user.id === userId) {
-      return NextResponse.json({ error: 'Cannot remove the last member from a channel' }, { status: 400 })
+      return createApiResponse(null, 400, 'Cannot remove the last member from a channel', 'LAST_MEMBER')
     }
 
     // Delete the membership record
-    await db.membership.delete({
-      where: {
-        userId_channelId: {
-          userId: userId,
-          channelId: channelId
-        }
-      }
-    })
+    await removeChannelMember(channelId, userId)
 
     // Get user details for the socket event
     const userToRemoveDetails = await db.user.findUnique({
@@ -106,11 +92,9 @@ const deleteHandler = createProtectedApiHandler(async (request: NextRequest, use
       })
     }
 
-    return NextResponse.json({ message: 'User removed from channel successfully' }, { status: 200 })
+    return createApiResponse(null, 200, 'User removed from channel successfully')
   } catch (error) {
     console.error('Error removing member from channel:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return createApiResponse(null, 500, 'Internal server error')
   }
 })
-
-export const DELETE = deleteHandler

@@ -1,64 +1,43 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { createProtectedApiHandler } from '@/lib/middleware'
-import { updateUserSchema, validateRequest } from '@/lib/validation'
+import { NextRequest } from 'next/server'
+import { createApiHandler } from '@/lib/api-middleware'
+import { updateUserSchema } from '@/lib/validation'
+import { getAllUsers, updateUser } from '@/services/database/user-service'
+import { createApiResponse } from '@/lib/api-utils'
 
-// GET handler using middleware
-const getHandler = createProtectedApiHandler(async (request, user) => {
+// GET handler using new middleware
+export const GET = createApiHandler(async (request, user) => {
   try {
-    const users = await db.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        avatar: true,
-        online: true,
-        createdAt: true
-      },
-      orderBy: { name: 'asc' }
-    })
-
-    return NextResponse.json(users)
+    const users = await getAllUsers()
+    return createApiResponse(users, 200, 'Users fetched successfully')
   } catch (error) {
     console.error('Error fetching users:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return createApiResponse(null, 500, 'Internal server error')
   }
 })
 
-// PUT handler using middleware and validation
-const putHandler = createProtectedApiHandler(async (request: NextRequest, user) => {
-  try {
+// PUT handler using new middleware and validation
+export const PUT = createApiHandler(async (request: NextRequest, user) => {
+ try {
     const body = await request.json()
     
     // Validate request body
-    const validation = validateRequest(updateUserSchema, body)
+    const validation = updateUserSchema.safeParse(body)
     if (!validation.success) {
-      return NextResponse.json({ error: validation.error }, { status: 400 })
+      return createApiResponse(
+        null,
+        400,
+        'Validation failed',
+        validation.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join(', ')
+      )
     }
     
     const { name, avatar } = validation.data
 
-    const updatedUser = await db.user.update({
-      where: { id: user.id },
-      data: {
-        name,
-        avatar
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        avatar: true,
-        online: true
-      }
-    })
+    const updatedUser = await updateUser(user.id, { name, avatar })
 
-    return NextResponse.json(updatedUser)
+    return createApiResponse(updatedUser, 200, 'User updated successfully')
   } catch (error) {
     console.error('Error updating user:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return createApiResponse(null, 500, 'Internal server error')
   }
 })
-
-export const GET = getHandler
-export const PUT = putHandler

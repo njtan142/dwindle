@@ -240,10 +240,9 @@ describe('Channel Members End-to-End Tests', () => {
         to: jest.fn().mockReturnThis(),
         emit: jest.fn()
       };
-      
-      // Import and call setupSocket
-      const { setupSocket } = require('@/lib/socket');
-      setupSocket({
+      // Import and call setupSocketEvents
+      const { setupSocketEvents } = require('@/services/socket/socket-events');
+      setupSocketEvents({
         on: (event, callback) => {
           if (event === 'connection') {
             callback(socketMock);
@@ -251,6 +250,7 @@ describe('Channel Members End-to-End Tests', () => {
         },
         use: jest.fn()
       });
+    
       
       // Verify socket event handlers were set up
       expect(socketMock.on).toHaveBeenCalledWith('memberAdded', expect.any(Function));
