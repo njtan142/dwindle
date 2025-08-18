@@ -1,130 +1,123 @@
-# Architecture (v0.1.0)
+# System Architecture v0.2.5
 
-This document provides a high-level overview of the Dwindle application's system architecture.
+This document provides a high-level overview of the Dwindle application's architecture, including design patterns, frameworks, and key architectural decisions.
 
 ## Overview
 
-Dwindle is a real-time messaging application built with a modern tech stack that combines Next.js for the frontend, Prisma for database access, and Socket.IO for real-time communication. The application follows a client-server architecture with a monolithic backend that serves both the web frontend and API endpoints.
-
-## High-Level Architecture Diagram
+Dwindle is a real-time chat application built with a modern web technology stack. It follows a client-server architecture with a monolithic backend that handles both traditional HTTP requests and real-time WebSocket communication.
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                          Client (Browser)                           │
-│  ┌─────────────────────────────────────────────────────────────────┐ │
-│  │                    React/Next.js Frontend                       │ │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │ │
-│  │  │   UI State  │  │   Hooks     │  │  Socket.IO Client       │  │ │
-│  │  │  Management │  │ (useSocket) │  │  (Real-time Events)     │  │ │
-│  │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │ │
-│  └─────────────────────────────────────────────────────────────────┘ │
-└─────────────────────┬───────────────────────────────────────────────┘
-                      │ HTTP/HTTPS & Socket.IO (WebSocket)
-                      ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                          Server (Node.js)                           │
-│  ┌─────────────────────────────────────────────────────────────────┐ │
-│  │                    Next.js Custom Server                      │ │
-│  │  ┌──────────────────┐  ┌──────────────────┐  ┌───────────────┐  │ │
-│  │  │  Next.js Router  │  │  Socket.IO       │  │   API Routes  │  │ │
-│  │  │  (Pages/API)     │  │  (Real-time)     │  │  (REST API)   │  │ │
-│  │  └──────────────────┘  └──────────────────┘  └───────────────┘  │ │
-│  └─────────────────────────────────────────────────────────────────┘ │
-│                              │         │                          │
-│                              ▼         ▼                          │
-│                   ┌─────────────────┐  │                           │
-│                   │   Prisma ORM    │  │                           │
-│                   │ (Data Access)   │  │                           │
-│                   └─────────────────┘  │                           │
-│                              │         │                           │
-│                              ▼         ▼                           │
-│                    ┌────────────────────────────┐                   │
-│                    │      SQLite Database       │                   │
-│                    │     (File-based)           │                   │
-│                    └────────────────────────────┘                   │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              Client (Browser)                              │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                        React/Next.js Frontend                        │  │
+│  │  ┌──────────────┐  ┌─────────────────┐  ┌─────────────────────────┐  │  │
+│  │  │  UI State    │  │  API Requests   │  │  Real-time Updates      │  │  │
+│  │  │  (Zustand)   │  │  (REST/HTTP)    │  │  (Socket.IO Client)     │  │  │
+│  │  └──────────────┘  └─────────────────┘  └─────────────────────────┘  │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────┬─────────────────────────────────────┘
+                                      │
+               ┌──────────────────────┼──────────────────────┐
+               │                      │                      │
+               ▼                      ▼                      ▼
+  ┌──────────────────────┐ ┌─────────────────────┐ ┌──────────────────────┐
+  │   HTTP/REST API      │ │  Socket.IO Server   │ │   Authentication     │
+  │   (Next.js Routes)   │ │   (Real-time)       │ │   (NextAuth.js)      │
+  └──────────────────────┘ └─────────────────────┘ └──────────────────────┘
+               │                      │                      │
+               └──────────────────────┼──────────────────────┘
+                                      ▼
+                            ┌─────────────────────┐
+                            │    Business Logic   │
+                            │  (Services/Helpers) │
+                            └─────────────────────┘
+                                      │
+                                      ▼
+                            ┌─────────────────────┐
+                            │     Data Access     │
+                            │    (Prisma ORM)     │
+                            └─────────────────────┘
+                                      │
+                                      ▼
+                            ┌─────────────────────┐
+                            │    SQLite Database  │
+                            └─────────────────────┘
 ```
 
 ## Frontend
 
 ### Framework
-- **Next.js 15**: React-based framework for building server-side rendered applications
-- **React 19**: UI library for component-based development
-- **TypeScript**: Type-safe JavaScript development
-
-### UI Components
-- **Tailwind CSS**: Utility-first CSS framework for styling
-- **Shadcn/ui**: Reusable component library built on Tailwind CSS
-- **Framer Motion**: Animation library for enhanced UX
+- **Next.js 15**: React framework with App Router for server-side rendering and static site generation
 
 ### State Management
 - **React Hooks**: Built-in state management for component-level state
-- **Zustand**: Lightweight state management library for global state
-- **React Query**: Server state management for API data
+- **Zustand**: Lightweight state management library for global application state
+
+### Styling
+- **Tailwind CSS 4**: Utility-first CSS framework for styling
+- **shadcn/ui**: Reusable component library built on Radix UI and Tailwind CSS
 
 ### Real-time Communication
-- **Socket.IO Client**: Real-time event-based communication with server
+- **Socket.IO Client**: JavaScript client library for real-time communication
+
+### Authentication
+- **NextAuth.js**: Authentication library with custom credentials provider
 
 ## Backend/API
 
 ### Server
-- **Custom Next.js Server**: Standalone server that handles both Next.js pages and Socket.IO
-- **Socket.IO**: Real-time bidirectional event-based communication
-- **NextAuth.js**: Authentication solution for Next.js applications
+- **Custom Next.js Server**: Standalone server (`server.ts`) that handles both HTTP requests and WebSocket connections
 
-### API Architecture
-- **Next.js API Routes**: File-based API routing system
-- **RESTful API**: HTTP-based API for CRUD operations
-- **Authentication Middleware**: Session-based authentication
-
-### Data Access
-- **Prisma ORM**: Type-safe database client for TypeScript and Node.js
-- **Prisma Client**: Auto-generated query builder based on schema
-- **SQLite**: File-based relational database
+### API Routes
+- **Next.js App Router API Routes**: RESTful API endpoints implemented as route handlers in `src/app/api/`
 
 ### Real-time Communication
-- **Socket.IO Server**: Real-time event-based communication with clients
+- **Socket.IO Server**: WebSocket server for real-time messaging features
+
+### Authentication
+- **NextAuth.js**: Authentication with custom credentials provider and Prisma adapter
+
+### Middleware
+- **Custom Middleware**: Authentication and error handling middleware in `src/lib/middleware.ts`
 
 ## Database
 
-### Database Engine
-- **SQLite**: Lightweight, file-based relational database
+### ORM
+- **Prisma ORM**: Type-safe database toolkit with SQLite provider
 
-### Schema Management
-- **Prisma Schema**: Declarative schema definition
-- **Prisma Migrate**: Database migration tool
+### Database
+- **SQLite**: Lightweight, file-based database
 
-### Data Models
-- **User**: User accounts and profiles
-- **Channel**: Communication channels
-- **Message**: Messages sent in channels
-- **Membership**: User-channel relationships
-- **Reaction**: Emoji reactions to messages
+### Schema
+- **Prisma Schema**: Defined in `prisma/schema.prisma` with models for User, Channel, Message, Membership, and Reaction
 
 ## Key Architectural Decisions
 
-1. **Monolithic Architecture**: Chose a monolithic approach for simplicity and ease of deployment, with all functionality in a single codebase.
+### Monolithic Architecture
+The application follows a monolithic architecture where the frontend, backend API, and real-time communication are all part of a single deployable unit. This simplifies development and deployment for a small to medium-sized application.
 
-2. **Next.js Standalone Server**: Implemented a custom Next.js server to integrate Socket.IO directly, enabling real-time communication alongside traditional HTTP requests.
+### Custom Server Integration
+A custom Next.js server (`server.ts`) is used to integrate Socket.IO with the Next.js application, allowing both traditional HTTP requests and WebSocket connections to be handled by the same server.
 
-3. **File-based Routing**: Leveraged Next.js's file-based routing for both pages and API endpoints to simplify route management.
+### Authentication Strategy
+NextAuth.js with a custom credentials provider is used for authentication, allowing users to sign in with just an email and name. Prisma adapter connects NextAuth to the database.
 
-4. **SQLite Database**: Selected SQLite for local development and simplicity, with the option to migrate to PostgreSQL or MySQL for production.
+### Real-time Communication
+Socket.IO is used for real-time features like instant messaging and typing indicators. The implementation includes proper authentication middleware and event handling.
 
-5. **Socket.IO Integration**: Integrated Socket.IO for real-time features like instant messaging, typing indicators, and presence updates.
+### Data Validation
+Zod is used for request validation in API routes, ensuring that incoming data meets the expected schema before processing.
 
-6. **Prisma ORM**: Used Prisma for type-safe database access with automatic migrations and query generation.
+### Component-based UI
+The UI is built with reusable components following the shadcn/ui pattern, promoting consistency and maintainability.
 
-7. **Credential Authentication**: Implemented a simple credential-based authentication system for quick onboarding.
+## Data Flow
 
-## Communication Flow
-
-1. **Page Requests**: Client requests pages through Next.js router, server renders pages and sends HTML/CSS/JS
-
-2. **API Calls**: Client makes REST API calls to Next.js API routes for data operations (users, channels, messages)
-
-3. **Real-time Events**: Client and server exchange real-time events through Socket.IO for instant messaging features
-
-4. **Database Operations**: Server performs database operations through Prisma ORM for data persistence
-
-5. **Authentication**: Client authenticates through NextAuth.js, which manages session state and protects routes
+1. **User Interaction**: User interacts with React components in the browser
+2. **API Requests**: For data operations, the frontend makes HTTP requests to Next.js API routes
+3. **Authentication**: Requests are authenticated using NextAuth.js middleware
+4. **Business Logic**: API routes process requests using business logic services
+5. **Data Access**: Prisma ORM is used to interact with the SQLite database
+6. **Real-time Updates**: For immediate updates, Socket.IO is used to broadcast changes to connected clients
+7. **UI Updates**: Components update based on API responses or real-time events

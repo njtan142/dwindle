@@ -1,174 +1,257 @@
-# UI Classes (v0.1.0)
+# UI Components v0.2.5
 
-This document describes the major user interface components in the Dwindle application.
+This document details the major user interface components in the Dwindle application.
 
-## Main Application Component
+## ChannelCreator
 
-### SlackClone
-The main application component that orchestrates all Slack-like functionality.
+### Description
+Component that provides functionality for creating new channels.
 
-**Location:** `src/app/page.tsx`
+### Location
+`src/components/slack/channel-creator.tsx`
 
-**Purpose:** 
-Central component that manages state and renders all UI elements for the messaging application.
+### Data Managed
+- None (stateless component)
 
-**Data Management:**
-- Manages user session state through NextAuth
-- Handles channels list state
-- Manages messages state for current channel
-- Tracks current channel selection
-- Manages typing indicators
-- Manages loading states
+### Logic Classes Interaction
+- Triggers dialog for channel creation
+- Calls API to create new channels
 
-**Interactions with Logic Classes:**
-- Uses `useSession` hook for authentication state
+## ChannelsPanel
+
+### Description
+Panel that displays the list of available channels and allows users to switch between them.
+
+### Location
+`src/components/slack/channels-panel.tsx`
+
+### Data Managed
+- List of channels
+- Current selected channel
+- Collapsed/expanded state
+
+### Logic Classes Interaction
+- Receives channel data from parent component
+- Calls `onChannelSelect` prop when user selects a channel
+- Calls `onChannelCreated` prop when a new channel is created
+- Manages local state for panel collapse
+
+## ChatContainer
+
+### Description
+Main container component that orchestrates the chat interface including channels panel, message area, and members panel.
+
+### Location
+`src/components/slack/chat-container.tsx`
+
+### Data Managed
+- Messages for current channel
+- Current channel state
+- Typing indicators
+- Panel visibility states (channels and members)
+- Quick switcher visibility
+
+### Logic Classes Interaction
+- Fetches messages via `/api/messages` endpoint
 - Uses `useSocket` hook for real-time communication
-- Calls API endpoints for data fetching (channels, messages, users)
-- Integrates with Socket.IO for real-time updates
+- Calls `validateChannelAccess` through API when switching channels
+- Manages localStorage for panel states
+- Handles keyboard shortcuts
 
-## Sidebar Components
+## ChatHeader
 
-### Sidebar
-Navigation sidebar component for workspace navigation.
+### Description
+Header component that displays information about the current channel.
 
-**Location:** `src/components/slack/sidebar.tsx`
+### Location
+`src/components/slack/chat-header.tsx`
 
-**Purpose:** 
-Provides quick access to channels and navigation options.
+### Data Managed
+- Channel name
+- Channel description
+- Privacy status
 
-**Data Management:**
-- Displays channel list
-- Shows current channel selection
-- Handles channel selection events
+### Logic Classes Interaction
+- Receives channel data as props
+- Displays channel information
 
-**Interactions with Logic Classes:**
-- Receives channels data from parent component
-- Calls `onChannelSelect` callback when user selects a channel
+## CreateChannelDialog
 
-### ChannelsPanel
-Expanded panel for channel management.
+### Description
+Dialog component that allows users to create new channels with name, description, and privacy settings.
 
-**Location:** `src/components/slack/channels-panel.tsx`
+### Location
+`src/components/slack/create-channel-dialog.tsx`
 
-**Purpose:** 
-Provides detailed channel navigation and creation functionality.
+### Data Managed
+- Form state for channel creation
+- Validation errors
+- Loading state during submission
 
-**Data Management:**
-- Displays detailed channel list
-- Handles channel creation
-- Manages channel selection
+### Logic Classes Interaction
+- Validates form input using `createChannelSchema`
+- Calls `/api/channels` endpoint to create new channels
+- Handles success/error responses
 
-**Interactions with Logic Classes:**
-- Receives channels data from parent component
-- Calls `onChannelSelect` and `onChannelCreated` callbacks
+## MembersPanel
 
-### MembersPanel
-Right sidebar showing online members.
+### Description
+Panel that displays the list of users/members and allows initiating direct messages.
 
-**Location:** `src/components/slack/members-panel.tsx`
+### Location
+`src/components/slack/members-panel.tsx`
 
-**Purpose:** 
-Displays list of users/members in the workspace.
+### Data Managed
+- List of users
+- Collapsed/expanded state
 
-**Data Management:**
-- Shows user avatars and online status
-- Displays user list
+### Logic Classes Interaction
+- Receives user data from parent component
+- Calls `onDirectMessage` prop when user initiates a direct message
+- Manages local state for panel collapse
 
-**Interactions with Logic Classes:**
-- Receives users data from parent component
+## MessageInput
 
-## Chat Components
+### Description
+Input component that allows users to type and send messages.
 
-### ChatHeader
-Header component for the main chat area.
+### Location
+`src/components/slack/message-input.tsx`
 
-**Location:** `src/components/slack/chat-header.tsx`
+### Data Managed
+- Current message text
+- Typing state
 
-**Purpose:** 
-Displays information about the current channel.
+### Logic Classes Interaction
+- Calls `onSendMessage` prop when user sends a message
+- Calls `onTyping` prop when user starts/stops typing
+- Uses `validateRequest` through API for message validation
 
-**Data Management:**
-- Shows channel name and description
-- Indicates if channel is private
+## MessageList
 
-**Interactions with Logic Classes:**
-- Receives channel information from parent component
+### Description
+Component that displays a list of messages in the current channel.
 
-### Message
-Component for displaying individual messages.
+### Location
+`src/components/slack/message-list.tsx`
 
-**Location:** `src/components/slack/message.tsx`
+### Data Managed
+- List of messages for current channel
 
-**Purpose:** 
-Renders a single message with user information and content.
+### Logic Classes Interaction
+- Receives messages data from parent component
+- Renders individual `Message` components
 
-**Data Management:**
-- Displays message content
-- Shows user avatar and name
-- Shows timestamp and edit status
+## Message
 
-**Interactions with Logic Classes:**
-- Receives message data from parent component
+### Description
+Component that displays an individual message with sender information and content.
 
-### MessageInput
-Input component for sending new messages.
+### Location
+`src/components/slack/message.tsx`
 
-**Location:** `src/components/slack/message-input.tsx`
+### Data Managed
+- Message content
+- Sender information
+- Timestamp
+- Edit status
 
-**Purpose:** 
-Provides interface for users to compose and send messages.
+### Logic Classes Interaction
+- Receives message data as props
+- Displays message information
 
-**Data Management:**
-- Manages message input state
-- Handles typing indicators
-- Submits messages to parent component
+## QuickSwitcher
 
-**Interactions with Logic Classes:**
-- Calls `onSendMessage` callback when user sends a message
-- Calls `onTyping` callback when user starts/stops typing
+### Description
+Dialog component that allows users to quickly switch between channels and users using keyboard shortcuts.
 
-## UI Components
+### Location
+`src/components/slack/quick-switcher.tsx`
 
-### Button
-Reusable button component with various styles.
+### Data Managed
+- Search query
+- Filtered list of channels and users
+- Selected item
 
-**Location:** `src/components/ui/button.tsx`
+### Logic Classes Interaction
+- Receives channels and users data as props
+- Calls `onChannelSelect` or `onUserSelect` props when user makes a selection
 
-**Purpose:** 
-Standardized button component used throughout the application.
+## Sidebar
 
-### Input
-Reusable input field component.
+### Description
+Navigation sidebar that provides access to main application features.
 
-**Location:** `src/components/ui/input.tsx`
+### Location
+`src/components/slack/sidebar.tsx`
 
-**Purpose:** 
-Standardized input field component used for forms and message composition.
+### Data Managed
+- None (stateless component)
 
-### ScrollArea
-Custom scrollable area component.
+### Logic Classes Interaction
+- Provides navigation interface
 
-**Location:** `src/components/ui/scroll-area.tsx`
+## Providers
 
-**Purpose:** 
-Provides custom scrollbar functionality for content areas.
+### Description
+Component that wraps the application with necessary context providers.
 
-## Hooks
+### Location
+`src/components/providers.tsx`
+
+### Data Managed
+- Theme provider state
+- Socket.IO provider state
+
+### Logic Classes Interaction
+- Initializes theme provider
+- Initializes socket provider with user authentication
+
+## Custom Hooks
 
 ### useSocket
-Custom React hook for managing Socket.IO connections.
 
-**Location:** `src/hooks/use-socket.ts`
+### Description
+Custom hook that manages the Socket.IO connection and events.
 
-**Purpose:** 
-Encapsulates Socket.IO client functionality for real-time communication.
+### Location
+`src/hooks/use-socket.ts`
 
-**Data Management:**
-- Manages Socket.IO connection state
-- Handles incoming messages and events
-- Manages typing indicators
+### Data Managed
+- Socket.IO connection state
+- Message list
+- Connected users
 
-**Interactions with Logic Classes:**
-- Connects to Socket.IO server
-- Emits events for real-time communication
-- Receives and processes real-time updates
+### Logic Classes Interaction
+- Wraps Socket.IO client functionality
+- Handles authentication with user session
+- Manages real-time events
+
+### useMobile
+
+### Description
+Custom hook that detects if the application is running on a mobile device.
+
+### Location
+`src/hooks/use-mobile.ts`
+
+### Data Managed
+- Mobile device detection state
+
+### Logic Classes Interaction
+- Provides responsive design information
+
+### useToast
+
+### Description
+Custom hook that manages toast notifications.
+
+### Location
+`src/hooks/use-toast.ts`
+
+### Data Managed
+- Toast notifications
+- Toast state
+
+### Logic Classes Interaction
+- Provides notification functionality

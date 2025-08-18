@@ -1,150 +1,116 @@
-# Logic Classes (v0.1.0)
+# Logic Classes v0.2.5
 
-This document describes the core business logic classes and services in the Dwindle application.
+This document details the core business logic classes and services in the Dwindle application.
 
-## Database Models (Prisma Schema)
+## Authentication Service
 
-The application uses Prisma ORM with the following database models:
+### Description
+Handles user authentication and session management using NextAuth.js with a custom credentials provider.
 
-### Channel
-Represents a communication channel where users can send messages.
+### Location
+`src/lib/auth.ts`
 
-**Properties:**
-- `id` (String): Unique identifier for the channel
-- `name` (String): Unique name of the channel
-- `description` (String, optional): Description of the channel
-- `type` (ChannelType): Type of channel (PUBLIC, PRIVATE, DIRECT_MESSAGE)
-- `isPrivate` (Boolean): Indicates if the channel is private
-- `createdAt` (DateTime): Timestamp when channel was created
-- `updatedAt` (DateTime): Timestamp when channel was last updated
+### Key Properties
+- `authOptions`: NextAuth configuration object
+- `CredentialsProvider`: Provider for email/name based authentication
+- `PrismaAdapter`: Adapter connecting NextAuth to Prisma database
 
-**Relations:**
-- `messages`: List of messages in the channel
-- `memberships`: List of user memberships in the channel
+### Methods
+- `authorize(credentials)`: Authenticates users based on email and name, creating new users if they don't exist
+- `jwt({ token, user })`: Extends JWT with user ID and avatar
+- `session({ session, token })`: Extends session with user ID and avatar
 
-### Membership
-Represents a user's membership in a channel.
+## Channel Service
 
-**Properties:**
-- `id` (String): Unique identifier for the membership
-- `userId` (String): Reference to the user
-- `channelId` (String): Reference to the channel
-- `joinedAt` (DateTime): Timestamp when user joined the channel
+### Description
+Provides business logic for channel-related operations including access validation and channel creation.
 
-**Relations:**
-- `user`: The user who is a member
-- `channel`: The channel the user is a member of
+### Location
+`src/lib/channel-service.ts`
 
-### Message
-Represents a message sent by a user in a channel.
+### Key Properties
+- None
 
-**Properties:**
-- `id` (String): Unique identifier for the message
-- `content` (String): Content of the message
-- `channelId` (String): Reference to the channel
-- `userId` (String): Reference to the user who sent the message
-- `timestamp` (DateTime): Timestamp when message was sent
-- `editedAt` (DateTime, optional): Timestamp when message was last edited
-- `isEdited` (Boolean): Indicates if the message has been edited
+### Methods
+- `validateChannelAccess(userId: string, channelId: string)`: Validates if a user has access to a channel, returning a boolean
+- `channelExists(channelId: string)`: Checks if a channel exists, returning a boolean
+- `getChannelByName(name: string)`: Retrieves a channel by its name, returning the channel object or null
+- `getChannelById(channelId: string)`: Retrieves a channel by its ID, returning the channel object or null
+- `ensureGeneralChannel()`: Ensures that a "general" channel exists as a PUBLIC channel, creating it if necessary
 
-**Relations:**
-- `channel`: The channel where the message was sent
-- `user`: The user who sent the message
+## Database Service
 
-### Reaction
-Represents an emoji reaction to a message.
+### Description
+Manages the Prisma database client instance with proper singleton pattern implementation for development and production environments.
 
-**Properties:**
-- `id` (String): Unique identifier for the reaction
-- `emoji` (String): The emoji used for the reaction
-- `messageId` (String): Reference to the message
-- `userId` (String): Reference to the user who added the reaction
-- `createdAt` (DateTime): Timestamp when reaction was added
+### Location
+`src/lib/db.ts`
 
-**Relations:**
-- `message`: The message that was reacted to
-- `user`: The user who added the reaction
+### Key Properties
+- `db`: PrismaClient instance
 
-### User
-Represents a user of the application.
+### Methods
+- None (exports a singleton instance)
 
-**Properties:**
-- `id` (String): Unique identifier for the user
-- `email` (String): User's email address (unique)
-- `name` (String): User's display name
-- `avatar` (String, optional): URL to user's avatar image
-- `online` (Boolean): Indicates if user is currently online
-- `createdAt` (DateTime): Timestamp when user account was created
-- `updatedAt` (DateTime): Timestamp when user account was last updated
+## Middleware Service
 
-**Relations:**
-- `messages`: List of messages sent by the user
-- `memberships`: List of channel memberships
-- `reactions`: List of reactions added by the user
+### Description
+Provides reusable middleware functions for API route protection and error handling.
 
-## Services
+### Location
+`src/lib/middleware.ts`
 
-### AuthService
-Handles user authentication and session management.
+### Key Properties
+- `ApiHandler`: Type definition for protected API handlers
 
-**Location:** `src/lib/auth.ts`
+### Methods
+- `authenticateUser(request: NextRequest)`: Authenticates users for protected API routes, returning user object or error response
+- `handleErrors(asyncFn: () => Promise<NextResponse | undefined>)`: Wraps API handlers with error handling, returning appropriate error responses
+- `createProtectedApiHandler<T = any>(handler: ApiHandler<T>)`: Combines authentication and error handling for API routes
 
-**Key Functions:**
-- `authorize(credentials)`: Authenticates users with email and name
-- Session management through NextAuth.js
+## Socket Service
 
-### DatabaseService
-Manages database connections and operations.
+### Description
+Manages real-time communication using Socket.IO, handling events like message sending, typing indicators, and channel joining.
 
-**Location:** `src/lib/db.ts`
+### Location
+`src/lib/socket.ts`
 
-**Key Functions:**
-- `db`: Prisma client instance with connection pooling
+### Key Properties
+- `AuthenticatedSocket`: Extended Socket interface with user information
+- `MessageData`: Interface for message data structure
+- `TypingData`: Interface for typing indicator data structure
 
-### SocketService
-Manages real-time communication through Socket.IO.
+### Methods
+- `setupSocket(io: Server)`: Configures Socket.IO server with event handlers and authentication middleware
 
-**Location:** `src/lib/socket.ts`
+## Validation Service
 
-**Key Functions:**
-- `setupSocket(io)`: Configures Socket.IO event handlers
-- Message broadcasting and real-time updates
+### Description
+Provides request validation schemas and helper functions using Zod for API route input validation.
 
-## API Routes
+### Location
+`src/lib/validation.ts`
 
-### ChannelController
-Handles channel-related API requests.
+### Key Properties
+- `createChannelSchema`: Zod schema for channel creation validation
+- `joinChannelSchema`: Zod schema for channel joining validation
+- `createMessageSchema`: Zod schema for message creation validation
+- `updateUserSchema`: Zod schema for user update validation
 
-**Location:** `src/app/api/channels/route.ts`
+### Methods
+- `validateRequest<T>(schema: z.ZodSchema<T>, data: unknown)`: Validates request data against a Zod schema, returning parsed data or error message
 
-**Methods:**
-- `GET()`: Fetches list of channels accessible to the user
-- `POST(request)`: Creates a new channel
+## Utility Functions
 
-### MessageController
-Handles message-related API requests.
+### Description
+Collection of helper functions used throughout the application.
 
-**Location:** `src/app/api/messages/route.ts`
+### Location
+`src/lib/utils.ts`
 
-**Methods:**
-- `GET(request)`: Fetches messages for a specific channel
-- `POST(request)`: Creates a new message in a channel
+### Key Properties
+- None
 
-### UserController
-Handles user-related API requests.
-
-**Location:** `src/app/api/users/route.ts`
-
-**Methods:**
-- `GET(request)`: Fetches list of users
-- `PUT(request)`: Updates user information
-
-## Enums
-
-### ChannelType
-Defines the types of channels available in the application.
-
-**Values:**
-- `PUBLIC`: Public channels accessible to all users
-- `PRIVATE`: Private channels with restricted access
-- `DIRECT_MESSAGE`: Direct message channels between users
+### Methods
+- `cn(...inputs: ClassValue[])`: Merges Tailwind CSS classes using clsx and tailwind-merge

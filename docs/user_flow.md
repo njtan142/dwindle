@@ -1,58 +1,136 @@
-# User Flow (v0.1.0)
+# User Flow v0.2.5
 
-This document describes the step-by-step user journey in the Dwindle application, which is a Slack-like messaging platform.
+This document describes the primary user journey in the Dwindle application, from initial access to sending messages in channels.
 
-## Main User Flow: Messaging in Channels
+## Main User Flow
 
-1. **User Authentication**
-   - User accesses the application
-   - System redirects to authentication page if not logged in
-   - User enters email and name to authenticate
-   - System creates account if new user or logs in existing user
-   - System redirects to main application page
+### 1. Initial Access and Authentication
+- **User Action**: User accesses the application URL
+- **System Response**: Application checks for existing session
+- **Components Involved**:
+  - `src/app/page.tsx` (main application component)
+  - `src/lib/auth.ts` (authentication configuration)
+  - `src/app/api/auth/[...nextauth]/route.ts` (authentication API endpoint)
+- **Logic Classes**:
+  - `NextAuthOptions` (from `src/lib/auth.ts`)
+  - `CredentialsProvider` (from `src/lib/auth.ts`)
 
-2. **Application Initialization**
-   - System loads user session data
-   - System fetches list of available channels
-   - System fetches list of users
-   - System establishes Socket.IO connection for real-time communication
+### 2. User Registration/Sign-in
+- **User Action**: User provides email and name in the sign-in form
+- **System Response**: System either creates a new user or signs in an existing user
+- **Components Involved**:
+  - `src/app/auth/signin/page.tsx` (sign-in page)
+  - `src/lib/auth.ts` (authentication logic)
+- **Logic Classes**:
+  - `CredentialsProvider` (handles user creation/authentication)
+  - `PrismaAdapter` (connects NextAuth to Prisma database)
 
-3. **Channel Selection**
-   - User views list of available channels in sidebar
-   - User selects a channel to view messages
-   - System loads messages for the selected channel
-   - System joins the selected channel via Socket.IO
+### 3. Application Initialization
+- **User Action**: User successfully authenticates
+- **System Response**: Main application loads with user session
+- **Components Involved**:
+  - `src/app/page.tsx` (main application component)
+  - `src/components/slack/sidebar.tsx` (navigation sidebar)
+  - `src/components/slack/chat-container.tsx` (main chat container)
+- **API Endpoints**:
+  - `GET /api/users` (fetches list of users)
+  - `GET /api/channels` (fetches list of channels)
+- **Logic Classes**:
+  - `createProtectedApiHandler` (from `src/lib/middleware.ts`)
+  - `authenticateUser` (from `src/lib/middleware.ts`)
 
-4. **Message Viewing**
-   - System displays existing messages in the channel
-   - System shows user avatars and message timestamps
-   - System indicates if messages have been edited
+### 4. Channel Selection
+- **User Action**: User selects a channel from the channels panel
+- **System Response**: Application loads messages for the selected channel
+- **Components Involved**:
+  - `src/components/slack/channels-panel.tsx` (displays channel list)
+  - `src/components/slack/chat-container.tsx` (handles channel selection)
+  - `src/components/slack/chat-header.tsx` (displays channel information)
+- **API Endpoints**:
+  - `GET /api/messages?channelId={id}` (fetches messages for channel)
+- **Logic Classes**:
+  - `validateChannelAccess` (from `src/lib/channel-service.ts`)
 
-5. **Sending Messages**
-   - User types message in input field
-   - System sends typing indicators to other users in real-time
-   - User submits message by pressing Enter or clicking Send
-   - System saves message to database via API
-   - System broadcasts message to other users via Socket.IO
-   - System displays message in sender's view
+### 5. Real-time Connection Establishment
+- **User Action**: User enters a channel
+- **System Response**: Application establishes WebSocket connection for real-time updates
+- **Components Involved**:
+  - `src/hooks/use-socket.ts` (Socket.IO client hook)
+  - `src/lib/socket.ts` (Socket.IO server logic)
+- **Logic Classes**:
+  - `setupSocket` (from `src/lib/socket.ts`)
 
-6. **Real-time Interactions**
-   - System receives new messages from other users via Socket.IO
-   - System updates message list in real-time
-   - System shows typing indicators when other users are typing
-   - System maintains real-time connection for ongoing communication
+### 6. Message Sending
+- **User Action**: User types and sends a message in the message input
+- **System Response**: Message is saved to database and broadcast to other users in real-time
+- **Components Involved**:
+  - `src/components/slack/message-input.tsx` (message input component)
+  - `src/components/slack/chat-container.tsx` (handles message sending)
+- **API Endpoints**:
+  - `POST /api/messages` (creates new message in database)
+- **Logic Classes**:
+  - `createMessageSchema` (from `src/lib/validation.ts`)
+  - `validateRequest` (from `src/lib/validation.ts`)
+- **Socket Events**:
+  - `sendMessage` (client sends message)
+  - `newMessage` (server broadcasts message to channel)
 
-7. **Channel Management**
-   - User can create new channels through the UI
-   - System validates channel name uniqueness
-   - System creates new channel in database
-   - System updates channel list for all users
+### 7. Message Reception
+- **User Action**: Another user sends a message to the same channel
+- **System Response**: Message appears in real-time without page refresh
+- **Components Involved**:
+  - `src/hooks/use-socket.ts` (listens for socket events)
+  - `src/components/slack/message-list.tsx` (displays messages)
+  - `src/components/slack/message.tsx` (individual message component)
+- **Socket Events**:
+  - `newMessage` (received from server)
+  - `messageSent` (confirmation for sender)
 
-## Component Mapping
+### 8. Channel Creation
+- **User Action**: User initiates creation of a new channel
+- **System Response**: New channel is created and added to the channels list
+- **Components Involved**:
+  - `src/components/slack/channel-creator.tsx` (channel creation button)
+  - `src/components/slack/create-channel-dialog.tsx` (channel creation form)
+  - `src/components/slack/channels-panel.tsx` (displays updated channel list)
+- **API Endpoints**:
+  - `POST /api/channels` (creates new channel)
+- **Logic Classes**:
+  - `createChannelSchema` (from `src/lib/validation.ts`)
+  - `validateRequest` (from `src/lib/validation.ts`)
 
-- **Authentication**: `src/lib/auth.ts`, `src/app/api/auth/`
-- **Channel List**: `src/components/slack/sidebar.tsx`, `src/app/api/channels/route.ts`
-- **Message Display**: `src/components/slack/message.tsx`, `src/app/api/messages/route.ts`
-- **Message Input**: `src/components/slack/message-input.tsx`, `src/hooks/use-socket.ts`
-- **Real-time Communication**: `src/lib/socket.ts`, `src/hooks/use-socket.ts`
-- **User List**: `src/components/slack/members-panel.tsx`, `src/app/api/users/route.ts`
+### 9. Direct Messaging
+- **User Action**: User initiates a direct message with another user
+- **System Response**: Application creates or navigates to a direct message channel
+- **Components Involved**:
+  - `src/components/slack/members-panel.tsx` (user list with DM option)
+  - `src/components/slack/chat-container.tsx` (handles DM initiation)
+- **Logic Classes**:
+  - Channel creation logic (would extend existing channel creation)
+
+## Secondary User Flows
+
+### Quick Channel/User Switching
+- **User Action**: User presses Ctrl+K/Cmd+K to open quick switcher
+- **System Response**: Quick switcher dialog appears with searchable list of channels and users
+- **Components Involved**:
+  - `src/components/slack/quick-switcher.tsx` (quick switcher component)
+  - `src/components/slack/chat-container.tsx` (handles keyboard shortcuts)
+
+### Panel Collapsing
+- **User Action**: User clicks collapse button on channels or members panel
+- **System Response**: Panel collapses to a minimal button, state is saved in localStorage
+- **Components Involved**:
+  - `src/components/slack/channels-panel.tsx` (collapsible channels panel)
+  - `src/components/slack/members-panel.tsx` (collapsible members panel)
+  - `src/components/slack/chat-container.tsx` (manages panel state)
+
+### Typing Indicators
+- **User Action**: User types in the message input
+- **System Response**: "Someone is typing..." indicator appears for other users in the channel
+- **Components Involved**:
+  - `src/components/slack/message-input.tsx` (sends typing events)
+  - `src/components/slack/chat-container.tsx` (handles typing indicators)
+- **Socket Events**:
+  - `typing` (client sends typing status)
+  - `userTyping` (server broadcasts typing status)

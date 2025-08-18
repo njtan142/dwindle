@@ -1,108 +1,144 @@
-# Features (v0.1.0)
+# Features v0.2.5
 
 This document lists the main features implemented in the Dwindle application.
 
 ## Authentication
 
-**Description:** 
-User authentication system that allows users to sign in with email and name. New users are automatically created if they don't exist.
+### Description
+Email and name based authentication system that creates new users automatically.
 
-**Modules/Files Involved:**
-- `src/lib/auth.ts` - Authentication configuration
-- `src/app/api/auth/` - Authentication API routes
-- `src/app/auth/` - Authentication pages
-- `src/app/page.tsx` - Main application with authentication check
+### Implementation
+- `src/lib/auth.ts`: NextAuth.js configuration with custom credentials provider
+- `src/app/auth/signin/page.tsx`: Sign-in page UI
+- `src/app/api/auth/[...nextauth]/route.ts`: Authentication API endpoint
 
 ## Real-time Messaging
 
-**Description:** 
-Instant messaging functionality with real-time message delivery using Socket.IO. Messages appear instantly for all users in the same channel.
+### Description
+Instant messaging with real-time delivery using Socket.IO.
 
-**Modules/Files Involved:**
-- `src/lib/socket.ts` - Socket.IO server setup
-- `src/hooks/use-socket.ts` - Client-side Socket.IO hook
-- `src/components/slack/message.tsx` - Message display component
-- `src/components/slack/message-input.tsx` - Message input component
-- `src/app/api/messages/route.ts` - Message API endpoints
+### Implementation
+- `src/lib/socket.ts`: Socket.IO server setup and event handling
+- `src/hooks/use-socket.ts`: Client-side Socket.IO hook
+- `src/components/slack/chat-container.tsx`: Message handling and display
+- `src/components/slack/message-input.tsx`: Message input component
+- `src/components/slack/message-list.tsx`: Message list display
+- `src/components/slack/message.tsx`: Individual message component
 
 ## Channel Management
 
-**Description:** 
-Creation and management of communication channels. Users can view public channels and create new ones.
+### Description
+Creation and management of chat channels with public and private options.
 
-**Modules/Files Involved:**
-- `src/components/slack/sidebar.tsx` - Channel list display
-- `src/components/slack/channels-panel.tsx` - Channel management panel
-- `src/app/api/channels/route.ts` - Channel API endpoints
-- `prisma/schema.prisma` - Channel database model
+### Implementation
+- `src/app/api/channels/route.ts`: Channel API endpoints (GET, POST)
+- `src/lib/channel-service.ts`: Channel-related business logic
+- `src/components/slack/channels-panel.tsx`: Channel list display
+- `src/components/slack/channel-creator.tsx`: Channel creation button
+- `src/components/slack/create-channel-dialog.tsx`: Channel creation form
 
-## User Presence
+## User Management
 
-**Description:** 
-Display of online users and their presence status in the workspace.
+### Description
+User listing and profile management.
 
-**Modules/Files Involved:**
-- `src/components/slack/members-panel.tsx` - User list display
-- `src/app/api/users/route.ts` - User API endpoints
-- `prisma/schema.prisma` - User database model
+### Implementation
+- `src/app/api/users/route.ts`: User API endpoints (GET, PUT)
+- `src/components/slack/members-panel.tsx`: User list display
+- `src/lib/validation.ts`: User data validation
+
+## Message Persistence
+
+### Description
+Messages are stored in the database and persist between sessions.
+
+### Implementation
+- `src/app/api/messages/route.ts`: Message API endpoints (GET, POST)
+- `prisma/schema.prisma`: Message model definition
+- `src/lib/channel-service.ts`: Channel access validation
+
+## Channel Access Control
+
+### Description
+Public channels are accessible to all users, while private channels require membership.
+
+### Implementation
+- `src/lib/channel-service.ts`: Channel access validation logic
+- `src/app/api/messages/route.ts`: Message access control
+- `src/app/api/channels/route.ts`: Channel listing with access filtering
 
 ## Typing Indicators
 
-**Description:** 
-Real-time typing indicators that show when other users are composing messages.
+### Description
+Real-time typing indicators showing when other users are typing messages.
 
-**Modules/Files Involved:**
-- `src/hooks/use-socket.ts` - Typing event handling
-- `src/lib/socket.ts` - Socket.IO typing event setup
-- `src/components/slack/message-input.tsx` - Typing event emission
+### Implementation
+- `src/lib/socket.ts`: Socket.IO typing event handling
+- `src/hooks/use-socket.ts`: Client-side typing event handling
+- `src/components/slack/message-input.tsx`: Typing event emission
+- `src/components/slack/chat-container.tsx`: Typing indicator display
 
-## Message History
+## Quick Channel/User Switching
 
-**Description:** 
-Persistent storage and retrieval of message history for each channel.
+### Description
+Keyboard shortcut (Ctrl+K/Cmd+K) for quickly switching between channels and users.
 
-**Modules/Files Involved:**
-- `src/app/api/messages/route.ts` - Message retrieval API
-- `prisma/schema.prisma` - Message database model
-- `src/app/page.tsx` - Message display logic
+### Implementation
+- `src/components/slack/quick-switcher.tsx`: Quick switcher UI component
+- `src/components/slack/chat-container.tsx`: Keyboard shortcut handling
 
-## Responsive UI
+## Collapsible Panels
 
-**Description:** 
-Slack-like user interface with sidebar navigation, channel panels, and main chat area.
+### Description
+Channels and members panels can be collapsed to save screen space.
 
-**Modules/Files Involved:**
-- `src/app/page.tsx` - Main application layout
-- `src/components/slack/` - Slack-specific UI components
-- `src/components/ui/` - Generic UI components
-- `src/app/globals.css` - Global styling
+### Implementation
+- `src/components/slack/channels-panel.tsx`: Collapsible channels panel
+- `src/components/slack/members-panel.tsx`: Collapsible members panel
+- `src/components/slack/chat-container.tsx`: Panel state management
 
-## Database Integration
+## Responsive Design
 
-**Description:** 
-Full integration with SQLite database through Prisma ORM for data persistence.
+### Description
+UI adapts to different screen sizes and devices.
 
-**Modules/Files Involved:**
-- `src/lib/db.ts` - Database client setup
-- `prisma/schema.prisma` - Database schema
-- `src/app/api/*/route.ts` - API routes with database operations
+### Implementation
+- `src/hooks/use-mobile.ts`: Mobile device detection
+- Tailwind CSS responsive classes throughout components
+- Conditional rendering based on screen size
 
-## API Endpoints
+## General Channel as Default
 
-**Description:** 
-RESTful API endpoints for all application functionality.
+### Description
+A "general" channel is automatically created and used as the default channel.
 
-**Modules/Files Involved:**
-- `src/app/api/channels/route.ts` - Channel management API
-- `src/app/api/messages/route.ts` - Message management API
-- `src/app/api/users/route.ts` - User management API
-- `src/app/api/health/route.ts` - Health check API
+### Implementation
+- `src/lib/channel-service.ts`: General channel creation logic
+- `server.ts`: Ensures general channel exists on startup
+- `src/app/api/messages/route.ts`: Defaults to general channel when no ID specified
 
-## Custom Server
+## Health Check Endpoint
 
-**Description:** 
-Standalone Next.js server with integrated Socket.IO support.
+### Description
+Simple endpoint for checking application health.
 
-**Modules/Files Involved:**
-- `server.ts` - Main server file
-- `src/lib/socket.ts` - Socket.IO configuration
+### Implementation
+- `src/app/api/health/route.ts`: Health check API endpoint
+
+## Session Management
+
+### Description
+User sessions are managed with JWT tokens.
+
+### Implementation
+- `src/lib/auth.ts`: NextAuth.js JWT configuration
+- `src/components/providers.tsx`: Session provider wrapper
+
+## Input Validation
+
+### Description
+All API inputs are validated using Zod schemas.
+
+### Implementation
+- `src/lib/validation.ts`: Validation schemas and helper functions
+- API routes use validation before processing requests
