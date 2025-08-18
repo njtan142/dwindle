@@ -67,7 +67,7 @@ export default function SlackClone() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen w-full bg-gray-100">
       {/* Left Sidebar - Workspace Navigation */}
       <Sidebar />
       

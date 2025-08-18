@@ -236,12 +236,14 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
   // Toggle panel visibility and save to localStorage
   const toggleChannelsPanel = () => {
     const newState = !isChannelsPanelOpen
+    console.log('Toggling channels panel:', newState)
     setIsChannelsPanelOpen(newState)
     localStorage.setItem('channelsPanelOpen', JSON.stringify(newState))
   }
 
   const toggleMembersPanel = () => {
     const newState = !isMembersPanelOpen
+    console.log('Toggling members panel:', newState)
     setIsMembersPanelOpen(newState)
     localStorage.setItem('membersPanelOpen', JSON.stringify(newState))
   }
@@ -252,9 +254,9 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
   ).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
 
   return (
-    <div className="flex h-screen bg-gray-100" ref={chatContainerRef}>
+    <div className="flex h-screen w-full bg-gray-100" ref={chatContainerRef}>
       {/* Channels Panel */}
-      {isChannelsPanelOpen && (
+      {isChannelsPanelOpen ? (
         <ChannelsPanel
           currentChannel={currentChannel}
           channels={channels}
@@ -262,6 +264,20 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
           onChannelCreated={handleChannelCreated}
           onCollapse={toggleChannelsPanel}
         />
+      ) : (
+        // Show a minimal button to expand the channels panel when it's collapsed
+        <div className="flex items-start pt-2 pl-2 bg-gray-800 border-r border-gray-700">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleChannelsPanel}
+            className="text-gray-400 hover:text-white hover:bg-gray-700 p-1 h-auto"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Button>
+        </div>
       )}
 
       {/* Main Chat Area */}
@@ -314,12 +330,26 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
       </div>
 
       {/* Right Sidebar - Members */}
-      {isMembersPanelOpen && (
+      {isMembersPanelOpen ? (
         <MembersPanel
           users={users}
           onCollapse={toggleMembersPanel}
           onDirectMessage={handleDirectMessage}
         />
+      ) : (
+        // Show a minimal button to expand the members panel when it's collapsed
+        <div className="flex items-start pt-2 pr-2 bg-gray-50 border-l border-gray-200">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleMembersPanel}
+            className="text-gray-500 hover:text-gray-700 hover:bg-gray-200 p-1 h-auto"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </Button>
+        </div>
       )}
       
       {/* Quick Switcher */}
