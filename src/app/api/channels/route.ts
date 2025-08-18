@@ -11,6 +11,20 @@ export async function GET() {
     }
 
     const channels = await db.channel.findMany({
+      where: {
+        OR: [
+          {
+            type: 'PUBLIC'
+          },
+          {
+            memberships: {
+              some: {
+                userId: session.user.id
+              }
+            }
+          }
+        ]
+      },
       include: {
         memberships: {
           where: { userId: session.user.id },
@@ -23,13 +37,7 @@ export async function GET() {
       orderBy: { name: 'asc' }
     })
 
-    // Filter channels user has access to
-    const accessibleChannels = channels.filter(channel => 
-      channel.type === 'PUBLIC' || 
-      channel.memberships.length > 0
-    )
-
-    return NextResponse.json(accessibleChannels)
+    return NextResponse.json(channels)
   } catch (error) {
     console.error('Error fetching channels:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

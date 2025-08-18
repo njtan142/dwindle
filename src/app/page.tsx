@@ -79,12 +79,16 @@ export default function SlackClone() {
       const response = await fetch('/api/channels')
       if (response.ok) {
         const channelsData = await response.json()
+        console.log("channelsData", channelsData);
         setChannels(channelsData)
         
         // Set current channel to the first available channel
         if (channelsData.length > 0 && currentChannel === 'general') {
           setCurrentChannel(channelsData[0].name)
         }
+      }else{
+        console.log("fetch for channels error");
+        console.log(response.text());
       }
     } catch (error) {
       console.error('Error fetching channels:', error)
@@ -105,6 +109,7 @@ export default function SlackClone() {
 
   // Fetch messages when channel changes
   useEffect(() => {
+    console.log("changes", session, channels)
     if (session && channels.length > 0) {
       const currentChannelId = channels.find(c => c.name === currentChannel)?.id
       if (currentChannelId) {
@@ -127,6 +132,34 @@ export default function SlackClone() {
       socket.leaveChannel(currentChannelId)
     }
   }, [socket, session, currentChannel, channels])
+
+  useEffect(() => {
+    console.log("socket triggered")
+    if (socket.messages.length === 0) return;
+
+    const lastSocketMessage = socket.messages[socket.messages.length - 1];
+
+    // Avoid adding duplicates
+    if (messages.some(m => m.id === lastSocketMessage.id)) {
+      return;
+    }
+
+    const currentChannelId = channels.find(c => c.name === currentChannel)?.id;
+    if (lastSocketMessage.channelId === currentChannelId) {
+      const user = users.find(u => u.id === lastSocketMessage.senderId);
+      if (user) {
+        const newMessage: Message = {
+          id: lastSocketMessage.id,
+          content: lastSocketMessage.text,
+          userId: lastSocketMessage.senderId,
+          channelId: lastSocketMessage.channelId,
+          timestamp: lastSocketMessage.timestamp,
+          user: user,
+        };
+        setMessages(prevMessages => [...prevMessages, newMessage]);
+      }
+    }
+  }, [socket.messages, channels, currentChannel, users, messages]);
 
   const currentUser = session?.user ? {
     id: session.user.id,
@@ -157,6 +190,7 @@ export default function SlackClone() {
 
       if (response.ok) {
         const newMessage = await response.json()
+        console.log(newMessage)
         
         // Send via socket for real-time delivery to other clients
         socket.sendMessage({
@@ -166,6 +200,9 @@ export default function SlackClone() {
           channelId: currentChannelId,
           timestamp: newMessage.timestamp
         })
+      }else{
+        console.log("fetch for messages error");
+        response.text().then(text => console.log(text));
       }
     } catch (error) {
       console.error('Error sending message:', error)

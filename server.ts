@@ -25,7 +25,7 @@ async function createCustomServer() {
     // Create HTTP server that will handle both Next.js and Socket.IO
     const server = createServer((req, res) => {
       // Skip socket.io requests from Next.js handler
-      if (req.url?.startsWith('/api/socketio')) {
+      if (req.url?.startsWith('/socket.io')) {
         return;
       }
       handle(req, res);

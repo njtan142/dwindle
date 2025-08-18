@@ -32,6 +32,7 @@ export function useSocket() {
 
     // Initialize socket connection
     socketRef.current = io(process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '', {
+      path: '/api/socketio',
       auth: {
         userId: session.user.id,
         userEmail: session.user.email || ''

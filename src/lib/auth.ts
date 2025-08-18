@@ -1,6 +1,6 @@
 import { NextAuthOptions } from 'next-auth'
 import { PrismaAdapter } from '@next-auth/prisma-adapter'
-import { prisma } from './db'
+import { db as prisma } from './db'
 import CredentialsProvider from 'next-auth/providers/credentials'
 
 declare module 'next-auth' {

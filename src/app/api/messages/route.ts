@@ -19,18 +19,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Channel ID is required' }, { status: 400 })
     }
 
-    // Check if user is a member of the channel
-    const membership = await db.membership.findUnique({
-      where: {
-        userId_channelId: {
-          userId: session.user.id,
-          channelId: channelId
-        }
-      }
+    const channel = await db.channel.findUnique({
+      where: { id: channelId },
+      select: { isPrivate: true }
     })
 
-    if (!membership && !channelId.startsWith('dm_')) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+    if (channel?.isPrivate) {
+      const membership = await db.membership.findUnique({
+        where: {
+          userId_channelId: {
+            userId: session.user.id,
+            channelId: channelId
+          }
+        }
+      })
+      if (!membership) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      }
     }
 
     const messages = await db.message.findMany({
@@ -71,18 +76,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Content and channel ID are required' }, { status: 400 })
     }
 
-    // Check if user is a member of the channel
-    const membership = await db.membership.findUnique({
-      where: {
-        userId_channelId: {
-          userId: session.user.id,
-          channelId: channelId
-        }
-      }
+    const channel = await db.channel.findUnique({
+      where: { id: channelId },
+      select: { isPrivate: true }
     })
 
-    if (!membership && !channelId.startsWith('dm_')) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+    if (channel?.isPrivate) {
+      const membership = await db.membership.findUnique({
+        where: {
+          userId_channelId: {
+            userId: session.user.id,
+            channelId: channelId
+          }
+        }
+      })
+      if (!membership) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      }
     }
 
     const message = await db.message.create({
