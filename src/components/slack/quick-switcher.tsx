@@ -4,6 +4,8 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { ChannelForComponent, UserForComponent } from '@/types'
 import { useState, useEffect } from 'react'
+import { UserAvatar } from '@/components/ui/user-avatar'
+import { Badge } from '@/components/ui/badge'
 
 interface QuickSwitcherProps {
   open: boolean
@@ -76,9 +78,9 @@ export function QuickSwitcher({ open, onOpenChange, channels, users, onChannelSe
                       <span className="font-medium mr-2">#</span>
                       <span>{channel.name}</span>
                       {channel.isPrivate && (
-                        <span className="ml-2 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                        <Badge variant="outline" className="ml-2">
                           Private
-                        </span>
+                        </Badge>
                       )}
                     </div>
                   </CommandItem>
@@ -96,9 +98,11 @@ export function QuickSwitcher({ open, onOpenChange, channels, users, onChannelSe
                   >
                     <div className="flex items-center">
                       <div className="relative mr-2">
-                        <div className="w-4 h-4 rounded-full bg-gray-300 flex items-center justify-center text-xs">
-                          {user.name.charAt(0).toUpperCase()}
-                        </div>
+                        <UserAvatar
+                          name={user.name}
+                          avatar={user.avatar}
+                          className="w-4 h-4"
+                        />
                         {user.online && (
                           <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-green-500 border border-white rounded-full"></div>
                         )}
