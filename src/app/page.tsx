@@ -36,7 +36,7 @@ export default function SlackClone() {
       const response = await fetch('/api/users')
       if (response.ok) {
         const userData = await response.json()
-        setUsers(userData)
+        setUsers(Array.isArray(userData.data) ? userData.data : [])
       } else {
         setUsersError('Failed to fetch users')
       }
@@ -56,7 +56,7 @@ export default function SlackClone() {
       if (response.ok) {
         const channelsData = await response.json()
         console.log("channelsData", channelsData)
-        setChannels(channelsData)
+        setChannels(Array.isArray(channelsData.data) ? channelsData.data : [])
       } else {
         setChannelsError('Failed to fetch channels')
       }

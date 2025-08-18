@@ -40,7 +40,7 @@ export function ChannelMembersDialog({ channelId, channelName, currentUser, onMe
       response = await fetch(`/api/channels/${channelId}/members`)
       if (response.ok) {
         const data = await response.json()
-        setMembers(data)
+        setMembers(Array.isArray(data.data) ? data.data : [])
         setRetryCount(0) // Reset retry count on success
       } else {
         const error = await response.json()
@@ -90,7 +90,7 @@ export function ChannelMembersDialog({ channelId, channelName, currentUser, onMe
       const response = await fetch('/api/users')
       if (response.ok) {
         const data = await response.json()
-        setAllUsers(data)
+        setAllUsers(Array.isArray(data.data) ? data.data : [])
       }
     } catch (err) {
       console.error('Failed to fetch users:', err)

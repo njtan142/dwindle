@@ -91,7 +91,7 @@ export function ChatContainer({
         const response = await fetch(`/api/messages?channelId=${channelId}`)
         if (response.ok) {
           const messagesData = await response.json()
-          setMessages(messagesData)
+          setMessages(Array.isArray(messagesData.data) ? messagesData.data : [])
         }
       } catch (error) {
         console.error('Error fetching messages:', error)

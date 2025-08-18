@@ -253,11 +253,6 @@ class SocketService {
       this.notifyListeners('newMessage', message)
     })
 
-    this.socket.on('messageSent', (message: MessageData) => {
-      console.log('Message sent confirmation:', message)
-      this.notifyListeners('messageSent', message)
-    })
-
     this.socket.on('messageUpdated', (data: EditMessageData & { isEdited: boolean }) => {
       console.log('Message updated:', data)
       this.notifyListeners('messageUpdated', data)
@@ -391,16 +386,12 @@ export function useSocketService() {
       messagesRef.current = [...messagesRef.current, message]
     }
 
-    const handleMessageSent = (message: any) => {
-      messagesRef.current = [...messagesRef.current, message]
-    }
-
+    // We only need to listen to newMessage events, not messageSent
+    // messageSent is just a confirmation for the sender
     socketService.on('newMessage', handleNewMessage)
-    socketService.on('messageSent', handleMessageSent)
 
     return () => {
       socketService.off('newMessage', handleNewMessage)
-      socketService.off('messageSent', handleMessageSent)
     }
   }, [])
 
