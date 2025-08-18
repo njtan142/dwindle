@@ -1,4 +1,7 @@
-# General Channel Message Persistence Test Results
+# Test Results and Testing Plan
+
+## Overview
+This document contains test results and the testing plan for the Slack-like application. It includes both historical test results and the current testing strategy for new features.
 
 ## Test Overview
 This test was conducted to verify that messages persist properly in the general channel of the Slack-like application. The test plan included:
@@ -83,3 +86,67 @@ All test cases passed successfully. The implementation correctly handles message
 5. ✅ The system correctly defaults to the general channel when no channel ID is specified
 
 The application demonstrates robust message persistence and proper handling of the general channel as the default channel.
+
+## New Feature Testing: Add Users to Private Channels
+
+### Testing Plan
+A comprehensive testing strategy has been implemented for the "Add Users to Private Channels" feature:
+
+1. **Unit Tests for API Endpoints** (`__tests__/api/channel-members.test.js`):
+   - Test adding users to private channels with various permission scenarios
+   - Test removing users from private channels
+   - Test edge cases like adding existing members or removing non-members
+
+2. **Integration Tests for UI Components** (`__tests__/ui/channel-members-dialog.test.js`):
+   - Test that the member management dialog displays correctly
+   - Test that users can be added and removed through the UI
+   - Test that appropriate error messages are shown
+
+3. **End-to-End Tests** (`__tests__/e2e/channel-members.e2e.test.js`):
+   - Test the complete flow of adding a user to a private channel
+   - Test that the user can then access the channel
+   - Test that real-time updates work correctly
+
+### Test Organization
+Tests are organized in the `__tests__` directory with subdirectories for different test types:
+- `__tests__/api/` - Unit tests for API endpoints
+- `__tests__/ui/` - Integration tests for UI components
+- `__tests__/e2e/` - End-to-end tests
+
+### Detailed Test Results Summary
+
+Test Category | Test Case | Status | Details |
+|---------------|-----------|--------|---------|
+API Unit Tests | Add member to private channel | ✅ Passed | All permission scenarios covered |
+API Unit Tests | Remove member from private channel | ✅ Passed | Edge cases handled properly |
+API Unit Tests | Error handling | ✅ Passed | Appropriate error responses |
+UI Integration | Channel members dialog display | ✅ Passed | Component renders correctly |
+UI Integration | Add/remove members via UI | ✅ Passed | User interactions work as expected |
+UI Integration | Error messaging | ✅ Passed | Proper feedback for users |
+E2E Tests | Complete add user flow | ✅ Passed | End-to-end workflow functional |
+E2E Tests | Channel access validation | ✅ Passed | Proper access control implemented |
+E2E Tests | Real-time updates | ✅ Passed | Socket events working correctly |
+
+### Technical Implementation Details
+
+#### Test Framework
+- Uses Jest for unit and integration testing
+- Uses React Testing Library for UI component testing
+- Comprehensive mocking strategy for dependencies
+
+#### Mocking Strategy
+- Database operations mocked with Jest
+- API calls mocked with fetch mock
+- Socket events mocked for real-time testing
+
+#### Continuous Integration
+- All tests integrated into CI pipeline
+- Automated test execution on code changes
+- Coverage reporting for quality assurance
+
+### Conclusion
+The testing strategy for the "Add Users to Private Channels" feature provides comprehensive coverage of all functionality:
+1. ✅ All API endpoints properly validated and secured
+2. ✅ UI components function correctly with appropriate user feedback
+3. ✅ End-to-end workflows tested including real-time updates
+4. ✅ Edge cases and error conditions properly handled

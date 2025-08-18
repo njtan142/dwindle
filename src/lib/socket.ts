@@ -21,6 +21,14 @@ interface TypingData {
   isTyping: boolean;
 }
 
+interface MemberData {
+  userId: string;
+  userName: string;
+ userEmail: string;
+ channelId: string;
+ channelName: string;
+}
+
 export const setupSocket = (io: Server) => {
   // Authentication middleware
   io.use((socket: AuthenticatedSocket, next) => {
@@ -116,18 +124,35 @@ export const setupSocket = (io: Server) => {
         timestamp: new Date().toISOString()
       });
     });
-
-    socket.on('removeReaction', (data: { messageId: string; emoji: string; channelId: string }) => {
-      socket.to(data.channelId).emit('reactionRemoved', {
-        ...data,
-        userId: socket.userId,
-        timestamp: new Date().toISOString()
-      });
-    });
-
-    // Handle disconnect
-    socket.on('disconnect', () => {
-      console.log('User disconnected:', socket.userId, socket.id);
-    });
+socket.on('removeReaction', (data: { messageId: string; emoji: string; channelId: string }) => {
+  socket.to(data.channelId).emit('reactionRemoved', {
+    ...data,
+    userId: socket.userId,
+    timestamp: new Date().toISOString()
   });
+});
+
+// Handle member added event
+socket.on('memberAdded', (data: MemberData) => {
+  // Notify all users in the channel about the new member
+  socket.to(data.channelId).emit('userAddedToChannel', data);
+  
+  // Also send back to sender for confirmation
+  socket.emit('memberAddedConfirmation', data);
+});
+
+// Handle member removed event
+socket.on('memberRemoved', (data: MemberData) => {
+  // Notify all users in the channel about the removed member
+  socket.to(data.channelId).emit('userRemovedFromChannel', data);
+  
+  // Also send back to sender for confirmation
+  socket.emit('memberRemovedConfirmation', data);
+});
+
+// Handle disconnect
+socket.on('disconnect', () => {
+  console.log('User disconnected:', socket.userId, socket.id);
+});
+});
 };

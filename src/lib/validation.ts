@@ -24,6 +24,17 @@ export const updateUserSchema = z.object({
   avatar: z.string().url('Avatar must be a valid URL').optional()
 })
 
+// Channel member validation schemas
+export const addChannelMemberSchema = z.object({
+  channelId: z.string().min(1, 'Channel ID is required'),
+  userId: z.string().min(1, 'User ID is required')
+})
+
+export const removeChannelMemberSchema = z.object({
+  channelId: z.string().min(1, 'Channel ID is required'),
+  userId: z.string().min(1, 'User ID is required')
+})
+
 // Validation helper function
 export function validateRequest<T>(schema: z.ZodSchema<T>, data: unknown): { success: true; data: T } | { success: false; error: string } {
   try {

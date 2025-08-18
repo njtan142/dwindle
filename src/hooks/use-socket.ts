@@ -19,6 +19,13 @@ interface TypingData {
   channelId: string
   isTyping: boolean
 }
+interface MemberData {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  channelId: string;
+  channelName: string;
+}
 
 export function useSocket() {
   const { data: session } = useSession()
@@ -26,6 +33,7 @@ export function useSocket() {
   const [isConnected, setIsConnected] = useState(false)
   const [messages, setMessages] = useState<MessageData[]>([])
   const [typingUsers, setTypingUsers] = useState<string[]>([])
+  const [channelMembers, setChannelMembers] = useState<{[channelId: string]: MemberData[]}>({})
 
   useEffect(() => {
     if (!session?.user) return
@@ -92,6 +100,35 @@ export function useSocket() {
       console.log(`User ${data.userId} left channel ${data.channelId}`)
     })
 
+    // Member events
+    socket.on('userAddedToChannel', (data: MemberData) => {
+      console.log(`User ${data.userId} added to channel ${data.channelId}`)
+      // Update channel members state if needed
+      setChannelMembers(prev => {
+        const channelMembers = prev[data.channelId] || []
+        const userExists = channelMembers.some(member => member.userId === data.userId)
+        if (!userExists) {
+          return {
+            ...prev,
+            [data.channelId]: [...channelMembers, data]
+          }
+        }
+        return prev
+      })
+    })
+
+    socket.on('userRemovedFromChannel', (data: MemberData) => {
+      console.log(`User ${data.userId} removed from channel ${data.channelId}`)
+      // Update channel members state if needed
+      setChannelMembers(prev => {
+        const channelMembers = prev[data.channelId] || []
+        return {
+          ...prev,
+          [data.channelId]: channelMembers.filter(member => member.userId !== data.userId)
+        }
+      })
+    })
+
     return () => {
       socket.disconnect()
       socketRef.current = null
@@ -131,10 +168,19 @@ export function useSocket() {
     socketRef.current?.emit('removeReaction', data)
   }
 
+  const addMember = (data: MemberData) => {
+    socketRef.current?.emit('memberAdded', data)
+  }
+
+  const removeMember = (data: MemberData) => {
+    socketRef.current?.emit('memberRemoved', data)
+  }
+
   return {
     isConnected,
     messages,
     typingUsers,
+    channelMembers,
     joinChannel,
     leaveChannel,
     sendMessage,
@@ -142,6 +188,8 @@ export function useSocket() {
     editMessage,
     deleteMessage,
     addReaction,
-    removeReaction
+    removeReaction,
+    addMember,
+    removeMember
   }
 }

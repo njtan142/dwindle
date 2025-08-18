@@ -133,13 +133,15 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
     }
   }, [socket.messages, channels, currentChannel, users, messages])
 
-  const currentUser = session?.user ? {
+  const currentUser: UserForComponent | undefined = session?.user ? {
     id: session.user.id,
     name: session.user.name || 'Anonymous',
     email: session.user.email || '',
     avatar: session.user.avatar,
-    online: true
-  } : null
+    online: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  } : undefined
 
   const handleSendMessage = useCallback(async (messageContent: string, channelId?: string) => {
     if (!currentUser) return
@@ -309,6 +311,10 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
             channelName={currentChannelData?.name || 'general'}
             channelDescription={currentChannelData?.description}
             isPrivate={currentChannelData?.isPrivate}
+            channelId={currentChannel || undefined}
+            currentUser={currentUser || undefined}
+            onMembersChange={onChannelsRefresh}
+            memberCount={currentChannelData?._count?.memberships}
           />
           
           <Button

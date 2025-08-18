@@ -122,3 +122,34 @@ export async function ensureGeneralChannel() {
     throw error;
   }
 }
+
+/**
+ * Gets all members of a channel
+ * @param channelId - The ID of the channel
+ * @returns Array of users who are members of the channel
+ */
+export async function getChannelMembers(channelId: string) {
+  try {
+    return await db.user.findMany({
+      where: {
+        memberships: {
+          some: {
+            channelId: channelId
+          }
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatar: true,
+        online: true,
+        createdAt: true
+      },
+      orderBy: { name: 'asc' }
+    })
+  } catch (error) {
+    console.error('Error getting channel members:', error)
+    return []
+  }
+}

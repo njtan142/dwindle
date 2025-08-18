@@ -11,7 +11,7 @@ const hostname = '0.0.0.0';
 
 // Store server and io instances for hot reloading
 let server: ReturnType<typeof createServer>;
-let io: Server;
+export let io: Server;
 
 // Custom server with Socket.IO integration
 async function createCustomServer() {
@@ -47,6 +47,9 @@ async function createCustomServer() {
 
     setupSocket(io);
 
+    // Store the io instance in global object
+    (global as any).socketIOInstance = io;
+
     // Ensure general channel exists
     ensureGeneralChannel()
       .then(() => console.log('General channel ensured'))
@@ -56,6 +59,17 @@ async function createCustomServer() {
     server.listen(currentPort, hostname, () => {
       console.log(`> Ready on http://${hostname}:${currentPort}`);
       console.log(`> Socket.IO server running at ws://${hostname}:${currentPort}/api/socketio`);
+    });
+
+    // Handle server errors
+    server.on('error', (error: any) => {
+      if (error.code === 'EADDRINUSE') {
+        console.error(`Port ${currentPort} is already in use. Please close the application using this port or use a different port.`);
+        process.exit(1);
+      } else {
+        console.error('Server error:', error);
+        process.exit(1);
+      }
     });
 
   } catch (err) {

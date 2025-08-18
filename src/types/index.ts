@@ -38,6 +38,10 @@ export interface UserForComponent extends Omit<User, 'avatar'> {
 
 export interface ChannelForComponent extends Omit<Channel, 'description'> {
   description?: string;
+  _count?: {
+    memberships: number;
+    messages: number;
+  };
 }
 
 export interface MessageForComponent extends Omit<Message, 'timestamp'> {
