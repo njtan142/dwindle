@@ -47,3 +47,10 @@ test
 prompt
 
 server.log
+
+
+
+#AI
+.kilocode/
+.gemini/
+.qwen/
