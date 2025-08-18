@@ -51,7 +51,7 @@ export function MessageInput({ onSendMessage, onTyping, placeholder, channelId }
             value={message}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder || "Message #general"}
+            placeholder={placeholder || "Message channel"}
             className="pr-12 bg-card border-border focus:border-primary focus:ring-primary/30 rounded-lg"
           />
           <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex gap-1">

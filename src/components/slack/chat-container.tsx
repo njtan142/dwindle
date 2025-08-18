@@ -22,7 +22,7 @@ interface ChatContainerProps {
 export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefresh }: ChatContainerProps) {
   const { data: session } = useSession()
   const [messages, setMessages] = useState<MessageForComponent[]>([])
-  const [currentChannel, setCurrentChannel] = useState('general')
+  const [currentChannel, setCurrentChannel] = useState<string | null>(null)
  const [isTyping, setIsTyping] = useState(false)
  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null)
  const [isChannelsPanelOpen, setIsChannelsPanelOpen] = useState(true)
@@ -32,17 +32,21 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
  const socket = useSocket()
  const chatContainerRef = useRef<HTMLDivElement>(null)
 
+  // Set the initial current channel to the general channel
+  useEffect(() => {
+    if (channels.length > 0 && currentChannel === null) {
+      const generalChannel = channels.find(c => c.name === 'general')
+      if (generalChannel) {
+        setCurrentChannel(generalChannel.id)
+      }
+    }
+  }, [channels, currentChannel])
+
   // Fetch messages when channel changes
   useEffect(() => {
     const fetchMessages = async (channelId: string) => {
       try {
-        // For general channel, we don't need to provide channelId parameter
-        // The API will default to general channel when no channelId is provided
-        const url = channelId === 'general'
-          ? '/api/messages'
-          : `/api/messages?channelId=${channelId}`
-        
-        const response = await fetch(url)
+        const response = await fetch(`/api/messages?channelId=${channelId}`)
         if (response.ok) {
           const messagesData = await response.json()
           setMessages(messagesData)
@@ -52,15 +56,8 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
       }
     }
 
-    if (session && channels.length > 0) {
-      let currentChannelId = channels.find(c => c.name === currentChannel)?.id
-      // For general channel, use special ID
-      if (currentChannel === 'general') {
-        currentChannelId = 'general'
-      }
-      if (currentChannelId) {
-        fetchMessages(currentChannelId)
-      }
+    if (session && currentChannel) {
+      fetchMessages(currentChannel)
     }
   }, [currentChannel, channels, session])
 
@@ -99,25 +96,18 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
 
   // Socket event handlers
   useEffect(() => {
-    if (!socket.isConnected || !session) return
-
-    let currentChannelId = channels.find(c => c.name === currentChannel)?.id
-    // For general channel, use special ID
-    if (currentChannel === 'general') {
-      currentChannelId = 'general'
-    }
-    if (!currentChannelId) return
+    if (!socket.isConnected || !session || !currentChannel) return
     
     // Join current channel
-    socket.joinChannel(currentChannelId)
+    socket.joinChannel(currentChannel)
 
     return () => {
-      socket.leaveChannel(currentChannelId)
+      socket.leaveChannel(currentChannel)
     }
   }, [socket, session, currentChannel, channels])
 
   useEffect(() => {
-    if (socket.messages.length === 0) return
+    if (socket.messages.length === 0 || !currentChannel) return
 
     const lastSocketMessage = socket.messages[socket.messages.length - 1]
 
@@ -125,14 +115,8 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
     if (messages.some(m => m.id === lastSocketMessage.id)) {
       return
     }
-
-    let currentChannelId = channels.find(c => c.name === currentChannel)?.id
-    // For general channel, use special ID
-    if (currentChannel === 'general') {
-      currentChannelId = 'general'
-    }
     
-    if (lastSocketMessage.channelId === currentChannelId) {
+    if (lastSocketMessage.channelId === currentChannel) {
       const user = users.find(u => u.id === lastSocketMessage.senderId)
       if (user) {
         const newMessage: MessageForComponent = {
@@ -160,13 +144,10 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
   const handleSendMessage = useCallback(async (messageContent: string, channelId?: string) => {
     if (!currentUser) return
 
-    // If channelId is not provided, we'll let the API default to the general channel
-    // Otherwise, use the provided channelId
-    let currentChannelId = channelId || channels.find(c => c.name === currentChannel)?.id
-    // For general channel, use special handling
-    if (!channelId && currentChannel === 'general') {
-      currentChannelId = undefined // Don't include channelId in request body for general channel
-    }
+    // Use the provided channelId or default to currentChannel
+    const targetChannelId = channelId || currentChannel
+    
+    if (!targetChannelId) return
     
     try {
       // Send to API first
@@ -177,9 +158,7 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
         },
         body: JSON.stringify({
           content: messageContent,
-          // If channelId is undefined, it won't be included in the request body
-          // The API will handle defaulting to the general channel
-          ...(currentChannelId && { channelId: currentChannelId })
+          channelId: targetChannelId
         })
       })
 
@@ -188,24 +167,12 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
         console.log(newMessage)
         
         // Send via socket for real-time delivery to other clients
-        // For socket communication, we need a valid channelId
-        // For general channel, use special ID
-        let socketChannelId = currentChannelId
-        if (!socketChannelId && currentChannel === 'general') {
-          socketChannelId = 'general'
-        }
-        if (!socketChannelId) {
-          socketChannelId = channels.find(c => c.name === 'general')?.id
-        }
-        
-        if (socketChannelId) {
-          socket.sendMessage({
-            text: messageContent,
-            senderId: currentUser.id,
-            senderName: currentUser.name,
-            channelId: socketChannelId
-          })
-        }
+        socket.sendMessage({
+          text: messageContent,
+          senderId: currentUser.id,
+          senderName: currentUser.name,
+          channelId: targetChannelId
+        })
       } else {
         console.log("fetch for messages error")
         response.text().then(text => console.log(text))
@@ -216,23 +183,17 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
   }, [currentUser, channels, currentChannel, socket])
 
   const handleTyping = useCallback((isTyping: boolean, channelId?: string) => {
-    if (!currentUser) return
+    if (!currentUser || !currentChannel) return
 
-    // If channelId is not provided, try to get the current channel ID
-    let currentChannelId = channelId || channels.find(c => c.name === currentChannel)?.id
-    // For general channel, use special handling
-    if (!channelId && currentChannel === 'general') {
-      currentChannelId = 'general'
-    }
+    // Use the provided channelId or default to currentChannel
+    const targetChannelId = channelId || currentChannel
     
-    // If we still don't have a channel ID, we can't send typing indicator
-    if (!currentChannelId) return
     
     if (isTyping) {
       socket.sendTyping({
         userId: currentUser.id,
         userName: currentUser.name,
-        channelId: currentChannelId,
+        channelId: targetChannelId,
         isTyping: true
       })
 
@@ -244,7 +205,7 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
         socket.sendTyping({
           userId: currentUser.id,
           userName: currentUser.name,
-          channelId: currentChannelId,
+          channelId: targetChannelId,
           isTyping: false
         })
         setIsTyping(false)
@@ -271,8 +232,11 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
   }, [])
 
   const handleQuickSwitchChannel = useCallback((channelName: string) => {
-    setCurrentChannel(channelName)
-  }, [])
+    const channel = channels.find(c => c.name === channelName)
+    if (channel) {
+      setCurrentChannel(channel.id)
+    }
+  }, [channels])
 
   const handleQuickSwitchUser = useCallback((userId: string) => {
     handleDirectMessage(userId)
@@ -293,21 +257,23 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
     localStorage.setItem('membersPanelOpen', JSON.stringify(newState))
   }
 
-   const currentChannelData = channels.find(c => c.name === currentChannel)
-   const channelMessages = messages.filter(m =>
-     currentChannel === 'general'
-       ? m.channelId === 'general'
-       : m.channelId === currentChannelData?.id
-   ).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+   const currentChannelData = channels.find(c => c.id === currentChannel)
+   const channelMessages = messages.filter(m => m.channelId === currentChannel)
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
 
   return (
     <div className="flex h-screen w-full bg-gray-100" ref={chatContainerRef}>
       {/* Channels Panel */}
       {isChannelsPanelOpen ? (
         <ChannelsPanel
-          currentChannel={currentChannel}
+          currentChannel={currentChannelData?.name || 'general'}
           channels={channels}
-          onChannelSelect={setCurrentChannel}
+          onChannelSelect={(channelName) => {
+            const channel = channels.find(c => c.name === channelName)
+            if (channel) {
+              setCurrentChannel(channel.id)
+            }
+          }}
           onChannelCreated={handleChannelCreated}
           onCollapse={toggleChannelsPanel}
         />
@@ -340,7 +306,7 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
           </Button>
           
           <ChatHeader
-            channelName={currentChannel}
+            channelName={currentChannelData?.name || 'general'}
             channelDescription={currentChannelData?.description}
             isPrivate={currentChannelData?.isPrivate}
           />
@@ -358,7 +324,7 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
         {/* Messages */}
         <MessageList
           messages={channelMessages}
-          currentChannel={currentChannel}
+          currentChannel={currentChannelData?.name || 'general'}
         />
 
         {/* Typing indicator */}
@@ -372,8 +338,8 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
         <MessageInput
           onSendMessage={handleSendMessage}
           onTyping={handleTyping}
-          placeholder={`Message #${currentChannel}`}
-          channelId={currentChannel === 'general' ? undefined : channels.find(c => c.name === currentChannel)?.id}
+          placeholder={`Message #${currentChannelData?.name || 'general'}`}
+          channelId={currentChannel || undefined}
         />
       </div>
 
