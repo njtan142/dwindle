@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn, getSession } from 'next-auth/react'
+import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function SignIn() {
   const [email, setEmail] = useState('')
@@ -32,19 +32,19 @@ export default function SignIn() {
     } finally {
       setIsLoading(false)
     }
-  }
+ }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Sign In to Slack Clone</CardTitle>
-          <p className="text-gray-600">Enter your details to continue</p>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md shadow-lg">
+        <CardHeader className="text-center space-y-2">
+          <CardTitle className="text-2xl font-bold">Sign In to Dwindle</CardTitle>
+          <CardDescription>Enter your details to continue</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <label htmlFor="name" className="text-sm font-medium leading-none">
                 Name
               </label>
               <Input
@@ -54,10 +54,11 @@ export default function SignIn() {
                 onChange={(e) => setName(e.target.value)}
                 required
                 placeholder="Your name"
+                className="h-10"
               />
             </div>
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium leading-none">
                 Email
               </label>
               <Input
@@ -67,20 +68,24 @@ export default function SignIn() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="your.email@example.com"
+                className="h-10"
               />
             </div>
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Signing in...' : 'Sign In'}
-            </Button>
           </form>
-          <p className="text-center text-sm text-gray-600 mt-4">
+        </CardContent>
+        <CardFooter className="flex flex-col gap-4">
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isLoading}
+            onClick={handleSubmit}
+          >
+            {isLoading ? 'Signing in...' : 'Sign In'}
+          </Button>
+          <p className="text-center text-sm text-muted-foreground">
             No password required! This is a demo authentication.
           </p>
-        </CardContent>
+        </CardFooter>
       </Card>
     </div>
   )

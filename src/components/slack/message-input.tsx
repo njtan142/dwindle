@@ -42,8 +42,8 @@ export function MessageInput({ onSendMessage, onTyping, placeholder }: MessageIn
   }
 
   return (
-    <form onSubmit={handleSubmit} className="border-t border-gray-200 bg-white">
-      <div className="flex space-x-2 p-4">
+    <form onSubmit={handleSubmit} className="border-t border-border bg-background rounded-b-xl">
+      <div className="flex gap-3 p-4">
         <div className="flex-1 relative">
           <Input
             type="text"
@@ -51,13 +51,14 @@ export function MessageInput({ onSendMessage, onTyping, placeholder }: MessageIn
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder={placeholder || "Message #general"}
-            className="pr-12 bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+            className="pr-12 bg-card border-border focus:border-primary focus:ring-primary/30 rounded-lg"
           />
-          <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex space-x-1">
+          <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex gap-1">
             <Button
               type="submit"
               disabled={!message.trim()}
-              className="h-8 px-3 text-xs bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 rounded"
+              size="sm"
+              className="h-8 px-3 text-xs rounded-md"
             >
               Send
             </Button>

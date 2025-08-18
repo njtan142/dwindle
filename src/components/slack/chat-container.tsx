@@ -1,14 +1,16 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { ChannelsPanel } from '@/components/slack/channels-panel'
 import { ChatHeader } from '@/components/slack/chat-header'
 import { MessageInput } from '@/components/slack/message-input'
 import { MembersPanel } from '@/components/slack/members-panel'
 import { MessageList } from '@/components/slack/message-list'
+import { QuickSwitcher } from '@/components/slack/quick-switcher'
 import { useSocket } from '@/hooks/use-socket'
 import { ChannelForComponent, UserForComponent, MessageForComponent } from '@/types'
+import { Button } from '@/components/ui/button'
 
 interface ChatContainerProps {
   users: UserForComponent[]
@@ -22,9 +24,13 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
   const [messages, setMessages] = useState<MessageForComponent[]>([])
   const [currentChannel, setCurrentChannel] = useState('general')
  const [isTyping, setIsTyping] = useState(false)
-  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null)
-  
-  const socket = useSocket()
+ const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null)
+ const [isChannelsPanelOpen, setIsChannelsPanelOpen] = useState(true)
+ const [isMembersPanelOpen, setIsMembersPanelOpen] = useState(true)
+ const [isQuickSwitcherOpen, setIsQuickSwitcherOpen] = useState(false)
+ 
+ const socket = useSocket()
+ const chatContainerRef = useRef<HTMLDivElement>(null)
 
   // Fetch messages when channel changes
   useEffect(() => {
@@ -47,6 +53,39 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
       }
     }
   }, [currentChannel, channels, session])
+
+  // Load panel visibility state from localStorage on component mount
+  useEffect(() => {
+    const channelsPanelState = localStorage.getItem('channelsPanelOpen')
+    const membersPanelState = localStorage.getItem('membersPanelOpen')
+    
+    if (channelsPanelState !== null) {
+      setIsChannelsPanelOpen(JSON.parse(channelsPanelState))
+    }
+    
+    if (membersPanelState !== null) {
+      setIsMembersPanelOpen(JSON.parse(membersPanelState))
+    }
+  }, [])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+K or Cmd+K for quick switcher
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault()
+        setIsQuickSwitcherOpen(true)
+      }
+      
+      // Escape to close quick switcher
+      if (e.key === 'Escape' && isQuickSwitcherOpen) {
+        setIsQuickSwitcherOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isQuickSwitcherOpen])
 
   // Socket event handlers
   useEffect(() => {
@@ -179,31 +218,82 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
     onChannelsRefresh() // Refresh channels list
   }, [onChannelsRefresh])
 
+  const handleDirectMessage = useCallback((userId: string) => {
+    // In a real app, this would create or navigate to a direct message channel
+    console.log(`Direct message to user ${userId}`)
+    // For now, we'll just show an alert
+    alert(`Direct message to user ${userId}`)
+  }, [])
+
+  const handleQuickSwitchChannel = useCallback((channelName: string) => {
+    setCurrentChannel(channelName)
+  }, [])
+
+  const handleQuickSwitchUser = useCallback((userId: string) => {
+    handleDirectMessage(userId)
+  }, [handleDirectMessage])
+
+  // Toggle panel visibility and save to localStorage
+  const toggleChannelsPanel = () => {
+    const newState = !isChannelsPanelOpen
+    setIsChannelsPanelOpen(newState)
+    localStorage.setItem('channelsPanelOpen', JSON.stringify(newState))
+  }
+
+  const toggleMembersPanel = () => {
+    const newState = !isMembersPanelOpen
+    setIsMembersPanelOpen(newState)
+    localStorage.setItem('membersPanelOpen', JSON.stringify(newState))
+  }
+
   const currentChannelData = channels.find(c => c.name === currentChannel)
   const channelMessages = messages.filter(m => 
     m.channelId === currentChannelData?.id
   ).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100" ref={chatContainerRef}>
       {/* Channels Panel */}
-      <ChannelsPanel 
-        currentChannel={currentChannel}
-        channels={channels}
-        onChannelSelect={setCurrentChannel}
-        onChannelCreated={handleChannelCreated}
-      />
+      {isChannelsPanelOpen && (
+        <ChannelsPanel
+          currentChannel={currentChannel}
+          channels={channels}
+          onChannelSelect={setCurrentChannel}
+          onChannelCreated={handleChannelCreated}
+          onCollapse={toggleChannelsPanel}
+        />
+      )}
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col bg-white">
-        <ChatHeader 
-          channelName={currentChannel}
-          channelDescription={currentChannelData?.description}
-          isPrivate={currentChannelData?.isPrivate}
-        />
+        <div className="flex items-center justify-between p-2 border-b">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleChannelsPanel}
+            className="md:hidden"
+          >
+            {isChannelsPanelOpen ? 'Hide Channels' : 'Show Channels'}
+          </Button>
+          
+          <ChatHeader
+            channelName={currentChannel}
+            channelDescription={currentChannelData?.description}
+            isPrivate={currentChannelData?.isPrivate}
+          />
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleMembersPanel}
+            className="md:hidden"
+          >
+            {isMembersPanelOpen ? 'Hide Members' : 'Show Members'}
+          </Button>
+        </div>
 
         {/* Messages */}
-        <MessageList 
+        <MessageList
           messages={channelMessages}
           currentChannel={currentChannel}
         />
@@ -216,7 +306,7 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
         )}
 
         {/* Message Input */}
-        <MessageInput 
+        <MessageInput
           onSendMessage={handleSendMessage}
           onTyping={handleTyping}
           placeholder={`Message #${currentChannel}`}
@@ -224,7 +314,23 @@ export function ChatContainer({ users, channels, onUsersRefresh, onChannelsRefre
       </div>
 
       {/* Right Sidebar - Members */}
-      <MembersPanel users={users} />
+      {isMembersPanelOpen && (
+        <MembersPanel
+          users={users}
+          onCollapse={toggleMembersPanel}
+          onDirectMessage={handleDirectMessage}
+        />
+      )}
+      
+      {/* Quick Switcher */}
+      <QuickSwitcher
+        open={isQuickSwitcherOpen}
+        onOpenChange={setIsQuickSwitcherOpen}
+        channels={channels}
+        users={users}
+        onChannelSelect={handleQuickSwitchChannel}
+        onUserSelect={handleQuickSwitchUser}
+      />
     </div>
   )
 }

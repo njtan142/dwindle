@@ -56,8 +56,8 @@ export function ChannelCreator({ onChannelCreated }: ChannelCreatorProps) {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="w-full justify-start">
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <Button variant="outline" size="sm" className="w-full justify-start gap-2">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           Create channel
@@ -67,8 +67,8 @@ export function ChannelCreator({ onChannelCreated }: ChannelCreatorProps) {
         <DialogHeader>
           <DialogTitle>Create a channel</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="space-y-2">
             <Label htmlFor="name">Channel name</Label>
             <Input
               id="name"
@@ -76,14 +76,13 @@ export function ChannelCreator({ onChannelCreated }: ChannelCreatorProps) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="general"
-              className="mt-1"
               maxLength={50}
               required
             />
-            <p className="text-xs text-gray-500 mt-1">Names can only contain lowercase letters, numbers, hyphens, and periods.</p>
+            <p className="text-xs text-muted-foreground">Names can only contain lowercase letters, numbers, hyphens, and periods.</p>
           </div>
           
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="description">Description (optional)</Label>
             <Input
               id="description"
@@ -91,36 +90,37 @@ export function ChannelCreator({ onChannelCreated }: ChannelCreatorProps) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What's this channel about?"
-              className="mt-1"
               maxLength={100}
             />
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <input
               type="checkbox"
               id="private"
               checked={isPrivate}
               onChange={(e) => setIsPrivate(e.target.checked)}
-              className="rounded border-gray-300"
+              className="rounded border-border text-primary focus:ring-primary"
             />
             <Label htmlFor="private" className="text-sm">
               Make private
             </Label>
           </div>
 
-          <div className="flex space-x-2 pt-4">
+          <div className="flex gap-3 pt-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsOpen(false)}
               disabled={isLoading}
+              className="flex-1"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={!name.trim() || isLoading}
+              className="flex-1"
             >
               {isLoading ? 'Creating...' : 'Create'}
             </Button>

@@ -16,27 +16,27 @@ export function Message({ message }: MessageProps) {
   }
 
   return (
-    <div className="flex space-x-3 group hover:bg-gray-50 -mx-2 px-3 py-3 rounded-lg transition-colors">
+    <div className="flex gap-3 group hover:bg-accent -mx-2 px-3 py-3 rounded-lg transition-colors">
       <div className="flex-shrink-0">
-        <UserAvatar 
-          name={message.user.name} 
-          avatar={message.user.avatar} 
-          className="w-8 h-8" 
+        <UserAvatar
+          name={message.user.name}
+          avatar={message.user.avatar}
+          className="w-10 h-10"
         />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-baseline space-x-2">
-          <span className="text-sm font-semibold text-gray-900">
+        <div className="flex items-baseline gap-2">
+          <span className="font-semibold text-foreground">
             {message.user.name}
           </span>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-muted-foreground">
             {formatTime(message.timestamp)}
           </span>
           {message.isEdited && (
-            <span className="text-xs text-gray-400">(edited)</span>
+            <span className="text-xs text-muted-foreground/70">(edited)</span>
           )}
         </div>
-        <p className="text-gray-800 mt-1 text-sm leading-relaxed whitespace-pre-wrap break-words">
+        <p className="text-foreground mt-1 leading-relaxed whitespace-pre-wrap break-words">
           {message.content}
         </p>
       </div>

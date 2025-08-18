@@ -56,6 +56,11 @@ const config: Config = {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
+  		},
+  		screens: {
+  			'sm': '640px',
+  			'md': '641px',
+  			'lg': '1025px'
   		}
   	}
   },
