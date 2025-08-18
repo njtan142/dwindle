@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { createProtectedApiHandler } from '@/lib/middleware'
+import { validateChannelAccess } from '@/lib/channel-service'
+import { createMessageSchema, validateRequest } from '@/lib/validation'
 
-export async function GET(request: NextRequest) {
+// GET handler using middleware
+const getHandler = createProtectedApiHandler(async (request, user) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const { searchParams } = new URL(request.url)
     const channelId = searchParams.get('channelId')
     const limit = parseInt(searchParams.get('limit') || '50')
@@ -19,23 +16,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Channel ID is required' }, { status: 400 })
     }
 
-    const channel = await db.channel.findUnique({
-      where: { id: channelId },
-      select: { isPrivate: true }
-    })
-
-    if (channel?.isPrivate) {
-      const membership = await db.membership.findUnique({
-        where: {
-          userId_channelId: {
-            userId: session.user.id,
-            channelId: channelId
-          }
-        }
-      })
-      if (!membership) {
-        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
-      }
+    // Validate channel access using the service
+    const hasAccess = await validateChannelAccess(user.id, channelId)
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
     const messages = await db.message.findMany({
@@ -61,45 +45,32 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching messages:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
+})
 
-export async function POST(request: NextRequest) {
+// POST handler using middleware and validation
+const postHandler = createProtectedApiHandler(async (request: NextRequest, user) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const body = await request.json()
+    
+    // Validate request body
+    const validation = validateRequest(createMessageSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
     }
+    
+    const { content, channelId } = validation.data
 
-    const { content, channelId } = await request.json()
-
-    if (!content || !channelId) {
-      return NextResponse.json({ error: 'Content and channel ID are required' }, { status: 400 })
-    }
-
-    const channel = await db.channel.findUnique({
-      where: { id: channelId },
-      select: { isPrivate: true }
-    })
-
-    if (channel?.isPrivate) {
-      const membership = await db.membership.findUnique({
-        where: {
-          userId_channelId: {
-            userId: session.user.id,
-            channelId: channelId
-          }
-        }
-      })
-      if (!membership) {
-        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
-      }
+    // Validate channel access using the service
+    const hasAccess = await validateChannelAccess(user.id, channelId)
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
     const message = await db.message.create({
       data: {
         content,
         channelId,
-        userId: session.user.id
+        userId: user.id
       },
       include: {
         user: {
@@ -119,4 +90,7 @@ export async function POST(request: NextRequest) {
     console.error('Error creating message:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
+})
+
+export const GET = getHandler
+export const POST = postHandler

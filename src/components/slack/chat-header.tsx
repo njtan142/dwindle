@@ -1,10 +1,11 @@
 'use client'
 
 import { Badge } from '@/components/ui/badge'
+import { ChannelForComponent } from '@/types'
 
 interface ChatHeaderProps {
   channelName: string
-  channelDescription?: string
+  channelDescription?: string | null
   isPrivate?: boolean
 }
 

@@ -1,21 +1,10 @@
 'use client'
 
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { UserAvatar } from '@/components/ui/user-avatar'
+import { MessageForComponent } from '@/types'
 
 interface MessageProps {
-  message: {
-    id: string
-    content: string
-    timestamp: string
-    isEdited?: boolean
-    user: {
-      id: string
-      name: string
-      email: string
-      avatar?: string
-      online: boolean
-    }
-  }
+ message: MessageForComponent
 }
 
 export function Message({ message }: MessageProps) {
@@ -29,11 +18,11 @@ export function Message({ message }: MessageProps) {
   return (
     <div className="flex space-x-3 group hover:bg-gray-50 -mx-2 px-3 py-3 rounded-lg transition-colors">
       <div className="flex-shrink-0">
-        <Avatar className="w-8 h-8">
-          <AvatarFallback className="bg-gray-300 text-gray-700 text-sm font-medium">
-            {message.user.name.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
+        <UserAvatar 
+          name={message.user.name} 
+          avatar={message.user.avatar} 
+          className="w-8 h-8" 
+        />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline space-x-2">

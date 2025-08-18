@@ -1,13 +1,13 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Badge } from '@/components/ui/badge'
 import { CreateChannelDialog } from './create-channel-dialog'
+import { ChannelItem } from '@/components/ui/channel-item'
+import { ChannelForComponent } from '@/types'
 
 interface ChannelsPanelProps {
   currentChannel: string
-  channels: Array<{ id: string; name: string; description?: string; isPrivate: boolean }>
+  channels: ChannelForComponent[]
   onChannelSelect: (channelName: string) => void
   onChannelCreated: () => void
 }
@@ -22,20 +22,12 @@ export function ChannelsPanel({ currentChannel, channels, onChannelSelect, onCha
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-0.5">
           {channels.map((channel) => (
-            <Button
+            <ChannelItem
               key={channel.id}
-              variant={currentChannel === channel.name ? "default" : "ghost"}
-              className="w-full justify-start text-sm h-8 rounded-md"
-              onClick={() => onChannelSelect(channel.name)}
-            >
-              <span className="mr-2 text-gray-400">#</span>
-              <span className="truncate">{channel.name}</span>
-              {channel.isPrivate && (
-                <Badge variant="secondary" className="ml-auto text-xs">
-                  Private
-                </Badge>
-              )}
-            </Button>
+              channel={channel}
+              isSelected={currentChannel === channel.name}
+              onSelect={onChannelSelect}
+            />
           ))}
         </div>
       </ScrollArea>

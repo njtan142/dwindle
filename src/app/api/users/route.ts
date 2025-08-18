@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { createProtectedApiHandler } from '@/lib/middleware'
+import { updateUserSchema, validateRequest } from '@/lib/validation'
 
-export async function GET(request: NextRequest) {
+// GET handler using middleware
+const getHandler = createProtectedApiHandler(async (request, user) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const users = await db.user.findMany({
       select: {
         id: true,
@@ -27,23 +23,23 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching users:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
+})
 
-export async function PUT(request: NextRequest) {
+// PUT handler using middleware and validation
+const putHandler = createProtectedApiHandler(async (request: NextRequest, user) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const body = await request.json()
+    
+    // Validate request body
+    const validation = validateRequest(updateUserSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
     }
-
-    const { name, avatar } = await request.json()
-
-    if (!name) {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 })
-    }
+    
+    const { name, avatar } = validation.data
 
     const updatedUser = await db.user.update({
-      where: { id: session.user.id },
+      where: { id: user.id },
       data: {
         name,
         avatar
@@ -62,4 +58,7 @@ export async function PUT(request: NextRequest) {
     console.error('Error updating user:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
+})
+
+export const GET = getHandler
+export const PUT = putHandler

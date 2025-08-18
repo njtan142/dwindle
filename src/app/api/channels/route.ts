@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { createProtectedApiHandler } from '@/lib/middleware'
+import { createChannelSchema, validateRequest } from '@/lib/validation'
 
-export async function GET() {
+// GET handler using middleware
+const getHandler = createProtectedApiHandler(async (request, user) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const channels = await db.channel.findMany({
       where: {
         OR: [
@@ -19,7 +15,7 @@ export async function GET() {
           {
             memberships: {
               some: {
-                userId: session.user.id
+                userId: user.id
               }
             }
           }
@@ -27,7 +23,7 @@ export async function GET() {
       },
       include: {
         memberships: {
-          where: { userId: session.user.id },
+          where: { userId: user.id },
           select: { userId: true }
         },
         _count: {
@@ -42,20 +38,20 @@ export async function GET() {
     console.error('Error fetching channels:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
+})
 
-export async function POST(request: NextRequest) {
+// POST handler using middleware and validation
+const postHandler = createProtectedApiHandler(async (request: NextRequest, user) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const body = await request.json()
+    
+    // Validate request body
+    const validation = validateRequest(createChannelSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
     }
-
-    const { name, description, type = 'PUBLIC' } = await request.json()
-
-    if (!name) {
-      return NextResponse.json({ error: 'Channel name is required' }, { status: 400 })
-    }
+    
+    const { name, description, type } = validation.data
 
     // Check if channel name already exists
     const existingChannel = await db.channel.findUnique({
@@ -74,7 +70,7 @@ export async function POST(request: NextRequest) {
         isPrivate: type === 'PRIVATE',
         memberships: {
           create: {
-            userId: session.user.id
+            userId: user.id
           }
         }
       },
@@ -90,4 +86,7 @@ export async function POST(request: NextRequest) {
     console.error('Error creating channel:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
+})
+
+export const GET = getHandler
+export const POST = postHandler

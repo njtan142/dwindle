@@ -8,6 +8,10 @@ const dev = process.env.NODE_ENV !== 'production';
 const currentPort = 3000;
 const hostname = '0.0.0.0';
 
+// Store server and io instances for hot reloading
+let server: ReturnType<typeof createServer>;
+let io: Server;
+
 // Custom server with Socket.IO integration
 async function createCustomServer() {
   try {
@@ -23,7 +27,7 @@ async function createCustomServer() {
     const handle = nextApp.getRequestHandler();
 
     // Create HTTP server that will handle both Next.js and Socket.IO
-    const server = createServer((req, res) => {
+    server = createServer((req, res) => {
       // Skip socket.io requests from Next.js handler
       if (req.url?.startsWith('/socket.io')) {
         return;
@@ -32,7 +36,7 @@ async function createCustomServer() {
     });
 
     // Setup Socket.IO
-    const io = new Server(server, {
+    io = new Server(server, {
       path: '/api/socketio',
       cors: {
         origin: "*",
@@ -52,6 +56,25 @@ async function createCustomServer() {
     console.error('Server startup error:', err);
     process.exit(1);
   }
+}
+
+// Handle hot reloading in development
+if (dev && module.hot) {
+  module.hot.accept('./src/lib/socket', () => {
+    console.log('Socket handler updated, reinitializing Socket.IO');
+    if (io) {
+      // Clean up existing connections
+      io.removeAllListeners();
+      // Re-setup socket with new handler
+      setupSocket(io);
+    }
+  });
+
+  module.hot.dispose(() => {
+    if (server) {
+      server.close();
+    }
+  });
 }
 
 // Start the server

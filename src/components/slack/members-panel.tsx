@@ -1,16 +1,11 @@
 'use client'
 
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { UserAvatar } from '@/components/ui/user-avatar'
+import { UserForComponent } from '@/types'
 
 interface MembersPanelProps {
-  users: Array<{
-    id: string
-    name: string
-    email: string
-    avatar?: string
-    online: boolean
-  }>
+ users: UserForComponent[]
 }
 
 export function MembersPanel({ users }: MembersPanelProps) {
@@ -22,11 +17,11 @@ export function MembersPanel({ users }: MembersPanelProps) {
           {users.map((user) => (
             <div key={user.id} className="flex items-center space-x-2">
               <div className="relative">
-                <Avatar className="w-6 h-6">
-                  <AvatarFallback className="bg-gray-300 text-gray-700 text-xs">
-                    {user.name.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
+                <UserAvatar 
+                  name={user.name} 
+                  avatar={user.avatar} 
+                  className="w-6 h-6" 
+                />
                 {user.online && (
                   <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
                 )}

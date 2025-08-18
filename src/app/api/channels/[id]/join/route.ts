@@ -1,25 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { createProtectedApiHandler } from '@/lib/middleware'
+import { channelExists, getChannelById } from '@/lib/channel-service'
+import { joinChannelSchema, validateRequest } from '@/lib/validation'
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+// POST handler using middleware and validation
+const postHandler = createProtectedApiHandler(async (request: NextRequest, user, { params }) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Validate request parameters
+    const validation = validateRequest(joinChannelSchema, { channelId: params.id })
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
     }
-
-    const channelId = params.id
+    
+    const { channelId } = validation.data
 
     // Check if user is already a member
     const existingMembership = await db.membership.findUnique({
       where: {
         userId_channelId: {
-          userId: session.user.id,
+          userId: user.id,
           channelId: channelId
         }
       }
@@ -30,10 +30,12 @@ export async function POST(
     }
 
     // Check if channel exists and is not private
-    const channel = await db.channel.findUnique({
-      where: { id: channelId }
-    })
+    const channelExistsResult = await channelExists(channelId)
+    if (!channelExistsResult) {
+      return NextResponse.json({ error: 'Channel not found' }, { status: 404 })
+    }
 
+    const channel = await getChannelById(channelId)
     if (!channel) {
       return NextResponse.json({ error: 'Channel not found' }, { status: 404 })
     }
@@ -44,7 +46,7 @@ export async function POST(
 
     const membership = await db.membership.create({
       data: {
-        userId: session.user.id,
+        userId: user.id,
         channelId: channelId
       }
     })
@@ -54,4 +56,6 @@ export async function POST(
     console.error('Error joining channel:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
+})
+
+export const POST = postHandler
