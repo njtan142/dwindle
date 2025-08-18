@@ -54,3 +54,8 @@ server.log
 .kilocode/
 .gemini/
 .qwen/
+
+# database
+*.db
+*.db-journal
+prisma/db/custom.db
